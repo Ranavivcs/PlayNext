@@ -1,0 +1,103 @@
+// Orchestrates a live recommendation run: load DB inputs → hard-filter → call
+// the pure engine → persist the ranked output. The Supabase client is injected
+// (service-role script vs user-scoped server action); recommendations /
+// recommendation_items are owner-scoped, so writing user_id = userId satisfies
+// RLS on the app path and is just an explicit value on the script path.
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { recommend } from "../reco/recommend.ts";
+import type { ScoredGame } from "../reco/types.ts";
+import { loadCatalog, loadFeaturesFor } from "./catalog.ts";
+import { applyHardFilters, type HardFilters } from "./filters.ts";
+import { loadUserContext } from "./user.ts";
+
+export interface RunOptions {
+  client: SupabaseClient;
+  userId: string;
+  filters?: HardFilters;
+  topK?: number;
+  mmrLambda?: number;
+  /** Injectable reference time for the recency term (deterministic tests). */
+  now?: Date;
+  /** Persist to recommendations/recommendation_items (default true). */
+  persist?: boolean;
+}
+
+export interface RunResult {
+  results: ScoredGame[];
+  /** Number of candidates after hard filters. */
+  candidateCount: number;
+  /** recommendations.id, or null when persist === false. */
+  recId: string | null;
+}
+
+async function persistRun(
+  client: SupabaseClient,
+  userId: string,
+  params: Record<string, unknown>,
+  results: ScoredGame[],
+): Promise<string> {
+  const { data, error } = await client
+    .from("recommendations")
+    .insert({ user_id: userId, params })
+    .select("id")
+    .single();
+  if (error) throw new Error(`recommendations insert: ${error.message}`);
+  const recId = data.id as string;
+
+  const items = results.map((r, i) => ({
+    rec_id: recId,
+    app_id: r.appId,
+    rank: i + 1,
+    score: r.score,
+    score_breakdown: r.breakdown,
+  }));
+  if (items.length > 0) {
+    const { error: itemsError } = await client
+      .from("recommendation_items")
+      .insert(items);
+    if (itemsError) throw new Error(`recommendation_items insert: ${itemsError.message}`);
+  }
+  return recId;
+}
+
+export async function generateRecommendations(opts: RunOptions): Promise<RunResult> {
+  const { client, userId, filters = {}, topK, mmrLambda, now, persist = true } = opts;
+
+  const [catalog, user] = await Promise.all([
+    loadCatalog(client),
+    loadUserContext(client, userId),
+  ]);
+
+  const ownedFeatures = await loadFeaturesFor(
+    client,
+    user.owned.map((o) => o.appId),
+  );
+
+  const candidates = applyHardFilters(catalog, filters).map((e) => e.features);
+
+  const results = recommend({
+    candidates,
+    owned: user.owned,
+    ownedFeatures,
+    preferredGenres: user.preferredGenres,
+    preferredTags: user.preferredTags,
+    dismissedAppIds: user.dismissedAppIds,
+    weights: user.weights,
+    topK,
+    mmrLambda,
+    now,
+  });
+
+  let recId: string | null = null;
+  if (persist) {
+    recId = await persistRun(
+      client,
+      userId,
+      { weights: user.weights, filters, topK: topK ?? null, mmrLambda: mmrLambda ?? null },
+      results,
+    );
+  }
+
+  return { results, candidateCount: candidates.length, recId };
+}
