@@ -28,15 +28,15 @@ export interface TagGroup {
 }
 
 // "Difficulty" leads, since it was the user's explicit ask; difficulty is a
-// soft lean (community tags), never a hard guarantee.
+// soft lean (community tags), never a hard guarantee. Playstyle/Mood/Theme are
+// all community tags from the same pool, so they collapse into one "Vibe &
+// style" group rather than a fake taxonomy.
 export const TAG_GROUPS: TagGroup[] = [
   { label: "Difficulty", tags: ["Difficult", "Souls-like", "Relaxing", "Family Friendly"] },
   {
-    label: "Playstyle",
-    tags: ["Open World", "Story Rich", "Exploration", "Sandbox", "Stealth", "Tactical", "Turn-Based", "Choices Matter"],
+    label: "Vibe & style",
+    tags: ["Open World", "Story Rich", "Atmospheric", "Funny", "Horror", "Sci-fi", "Fantasy", "Stealth"],
   },
-  { label: "Mood", tags: ["Atmospheric", "Funny", "Dark", "Horror", "Great Soundtrack", "Cute"] },
-  { label: "Theme", tags: ["Sci-fi", "Fantasy", "Post-apocalyptic", "Zombies", "Space", "Anime"] },
 ];
 
 export const TAG_OPTIONS: string[] = TAG_GROUPS.flatMap((g) => g.tags);

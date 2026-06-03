@@ -212,31 +212,46 @@ export async function getSteamSpyAppDetails(appId: number): Promise<SteamSpyDeta
 }
 
 /**
- * Top-N most-popular PC games from SteamSpy's `all` list (page 0 = top 1000 by
- * owners). Used to seed the candidate catalog. NOTE: SteamSpy throttles this
- * endpoint to ~1 request/minute — call it once.
+ * Top-N most-popular PC games from SteamSpy's `all` list, used to seed the
+ * candidate catalog. Each `all` page returns ~1000 games by owners, so reaching
+ * more than 1000 requires paging (page 0, 1, 2…). SteamSpy throttles this
+ * endpoint to ~1 request/minute, so we wait ~61s between pages.
  *
- * SteamSpy keys the response object by appid, so `Object.values` would return
- * them in ascending-appid order (V8 orders integer-like keys numerically),
- * NOT by popularity. We re-sort by total reviews (positive + negative) desc to
- * recover a sensible popularity ranking before slicing.
+ * SteamSpy keys each page object by appid, so `Object.values` would return them
+ * in ascending-appid order (V8 orders integer-like keys numerically), NOT by
+ * popularity. We merge all pages and re-sort by total reviews (positive +
+ * negative) desc to recover a sensible popularity ranking before slicing.
  */
 export async function getSteamSpyTop(limit: number): Promise<{ appId: number; name: string }[]> {
-  const url = "https://steamspy.com/api.php?request=all&page=0";
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`SteamSpy all failed: ${res.status}`);
+  const PER_PAGE = 1000;
+  const pages = Math.max(1, Math.ceil(limit / PER_PAGE));
+  const merged = new Map<number, { appId: number; name: string; reviews: number }>();
 
-  const json = (await res.json()) as Record<
-    string,
-    { appid: number; name?: string; positive?: number; negative?: number }
-  >;
-  return Object.values(json)
-    .filter((g) => typeof g?.appid === "number")
-    .map((g) => ({
-      appId: g.appid,
-      name: g.name?.trim() || `App ${g.appid}`,
-      reviews: (Number(g.positive) || 0) + (Number(g.negative) || 0),
-    }))
+  for (let page = 0; page < pages; page++) {
+    // Respect SteamSpy's ~1 req/min throttle on the `all` endpoint.
+    if (page > 0) await new Promise((r) => setTimeout(r, 61_000));
+
+    const url = `https://steamspy.com/api.php?request=all&page=${page}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(`SteamSpy all page ${page} failed: ${res.status}`);
+
+    const json = (await res.json()) as Record<
+      string,
+      { appid: number; name?: string; positive?: number; negative?: number }
+    >;
+    const entries = Object.values(json).filter((g) => typeof g?.appid === "number");
+    if (entries.length === 0) break; // ran past the last populated page
+
+    for (const g of entries) {
+      merged.set(g.appid, {
+        appId: g.appid,
+        name: g.name?.trim() || `App ${g.appid}`,
+        reviews: (Number(g.positive) || 0) + (Number(g.negative) || 0),
+      });
+    }
+  }
+
+  return [...merged.values()]
     .sort((a, b) => b.reviews - a.reviews)
     .slice(0, limit)
     .map(({ appId, name }) => ({ appId, name }));

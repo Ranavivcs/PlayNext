@@ -10,17 +10,10 @@ import { DEFAULT_WEIGHTS } from "@/lib/reco-data/user";
 import type { Weights } from "@/lib/reco/types";
 import { GENRE_OPTION_SET, TAG_OPTION_SET } from "./preferences-options";
 
-const VALID_PLATFORMS = ["windows", "mac", "linux"] as const;
 const VALID_MODES = ["single-player", "multiplayer", "co-op"] as const;
 
 /** Build HardFilters from the dashboard form, ignoring anything unrecognized. */
 function parseFilters(formData: FormData): HardFilters {
-  const platforms = formData
-    .getAll("platform")
-    .filter(
-      (v): v is (typeof VALID_PLATFORMS)[number] =>
-        typeof v === "string" && (VALID_PLATFORMS as readonly string[]).includes(v),
-    );
   const modeRaw = formData.get("mode");
   const mode =
     typeof modeRaw === "string" && (VALID_MODES as readonly string[]).includes(modeRaw)
@@ -28,7 +21,6 @@ function parseFilters(formData: FormData): HardFilters {
       : undefined;
 
   const filters: HardFilters = {};
-  if (platforms.length > 0) filters.platforms = platforms;
   if (mode) filters.mode = mode;
   return filters;
 }

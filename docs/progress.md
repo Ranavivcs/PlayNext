@@ -192,6 +192,12 @@ User feedback on the first cut: two scattered "preference-like" panels (the Reco
 - **Merged action.** `app/dashboard/actions.ts`: replaced `savePreferences` + `generateRecs` with ONE `updateRecommendations(formData)` — saves soft prefs (preserving hidden collab weight) THEN runs the engine with hard filters, all under the user-scoped client (RLS). Single success banner "Updated — N recommendations." (`prefs_msg`/`prefs_error` searchParams removed; errors flow through `recs_error`).
 - Still **awaiting logged-in click-through** of the new single-form flow.
 
+### Step E follow-up: control simplification + bigger catalog (2026-06-01) ✅ BUILT (tsc+build clean)
+User feedback after seeing the redesign live: still too many options; Mood vs Theme / Genre vs Playstyle overlap; platform filter questionable for a PC-only app.
+- **Platform filter REMOVED from the UI.** Data-driven: of 1003 enriched games, 100% run on Windows, only 34% Mac / 25% Linux, and **62% are Windows-only** — so the filter never excludes anything for a Windows user and only matters for Mac/Linux. Dropped the platform chips from `page.tsx` and platform parsing from `actions.ts` `parseFilters`. The engine still SUPPORTS platform filtering (`lib/reco-data/filters.ts` `applyHardFilters` unchanged) so it can return later (e.g. OS auto-detect). Mode is now the only hard filter.
+- **Tag groups halved.** Playstyle/Mood/Theme were all community tags from one pool (arbitrary grouping) → merged into a single **"Vibe & style"** group (Open World, Story Rich, Atmospheric, Funny, Horror, Sci-fi, Fantasy, Stealth). Soft prefs are now just Genres (Steam taxonomy) + Difficulty + Vibe & style. (`preferences-options.ts`.)
+- **Catalog 1003 → 2533.** Decided ~2500 sweet spot (user had no preference; long tail past ~1000 is niche/low-review, diminishing relevance). Required the SteamSpy pagination fix: `getSteamSpyTop` now pages the `all` endpoint (1000/page) with a ~61s wait between pages (SteamSpy throttles `all` to ~1 req/min), merges + re-sorts by reviews. Run `enrich-catalog.ts 2500 50` → `{enriched:1530, skippedFresh:966, noStorePage:5, errors:0}`; verified **2533** enriched via head:true count.
+
 ## ▶ RESUME HERE (next session) — verify prefs click-through, then no-Steam seed path / game-length / RAG
 **Done up to now:** Phases 1–2, Phase 3 CORE, Step C, **Step D FULLY DONE**, **Step E BUILT** (catalog→1003 + soft-pref/weights UI; tsc+build clean, click-through pending). Pure `lib/reco/` untouched. RAWG stays DEFERRED (Steam-only v1).
 

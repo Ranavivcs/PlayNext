@@ -229,20 +229,9 @@ export default async function DashboardPage({
                   <div>
                     <p className="text-sm font-medium text-gray-700">Must match</p>
                     <p className="text-xs text-gray-400">
-                      Hard filters — results are limited to games that fit.
+                      Hard filter — results are limited to games that fit.
                     </p>
                   </div>
-                  <ChipGroup label="Platform">
-                    {PLATFORM_OPTIONS.map((p) => (
-                      <Chip
-                        key={p.value}
-                        name="platform"
-                        value={p.value}
-                        label={p.label}
-                        defaultChecked={appliedFilters.platforms?.includes(p.value)}
-                      />
-                    ))}
-                  </ChipGroup>
                   <ChipGroup label="Mode">
                     {MODE_OPTIONS.map((m) => (
                       <Chip
@@ -424,12 +413,6 @@ export default async function DashboardPage({
     </main>
   );
 }
-
-const PLATFORM_OPTIONS: { value: "windows" | "mac" | "linux"; label: string }[] = [
-  { value: "windows", label: "Windows" },
-  { value: "mac", label: "Mac" },
-  { value: "linux", label: "Linux" },
-];
 
 // Mode is single-select; "" = Any (parseFilters treats it as no constraint).
 const MODE_OPTIONS: { value: string; label: string }[] = [
