@@ -8,7 +8,7 @@ import { generateRecommendations } from "@/lib/reco-data/run";
 import type { HardFilters } from "@/lib/reco-data/filters";
 import { DEFAULT_WEIGHTS } from "@/lib/reco-data/user";
 import type { Weights } from "@/lib/reco/types";
-import { GENRE_OPTION_SET, TAG_OPTION_SET } from "./preferences-options";
+import { TAG_OPTION_SET, MAX_PICKS } from "./preferences-options";
 
 const VALID_MODES = ["single-player", "multiplayer", "co-op"] as const;
 
@@ -94,14 +94,18 @@ export async function updateRecommendations(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // 1. Save soft preferences. Only keep options we offer (exact catalog
-  //    strings); ignore anything else.
-  const preferred_genres = formData
-    .getAll("genre")
-    .filter((v): v is string => typeof v === "string" && GENRE_OPTION_SET.has(v));
-  const preferred_tags = formData
-    .getAll("tag")
-    .filter((v): v is string => typeof v === "string" && TAG_OPTION_SET.has(v));
+  // 1. Save soft preferences. Every UI option is a community tag (genres
+  //    included), so they all land in preferred_tags; preferred_genres (Steam's
+  //    coarse store-genre field) is intentionally left empty. Only keep options
+  //    we offer (exact catalog strings); ignore anything else.
+  const preferred_genres: string[] = [];
+  const preferred_tags = [
+    ...new Set(
+      formData
+        .getAll("tag")
+        .filter((v): v is string => typeof v === "string" && TAG_OPTION_SET.has(v)),
+    ),
+  ].slice(0, MAX_PICKS);
 
   const { data: existing } = await supabase
     .from("user_preferences")

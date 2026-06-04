@@ -198,6 +198,15 @@ User feedback after seeing the redesign live: still too many options; Mood vs Th
 - **Tag groups halved.** Playstyle/Mood/Theme were all community tags from one pool (arbitrary grouping) → merged into a single **"Vibe & style"** group (Open World, Story Rich, Atmospheric, Funny, Horror, Sci-fi, Fantasy, Stealth). Soft prefs are now just Genres (Steam taxonomy) + Difficulty + Vibe & style. (`preferences-options.ts`.)
 - **Catalog 1003 → 2533.** Decided ~2500 sweet spot (user had no preference; long tail past ~1000 is niche/low-review, diminishing relevance). Required the SteamSpy pagination fix: `getSteamSpyTop` now pages the `all` endpoint (1000/page) with a ~61s wait between pages (SteamSpy throttles `all` to ~1 req/min), merges + re-sorts by reviews. Run `enrich-catalog.ts 2500 50` → `{enriched:1530, skippedFresh:966, noStorePage:5, errors:0}`; verified **2533** enriched via head:true count.
 
+### Step E follow-up 2: soft-pref vocabulary overhaul + pick cap (2026-06-01) ✅ BUILT (tsc+build clean, user-approved live)
+User (a gamer) flagged: store-genres too coarse (wanted Shooter/MMO/Rogue-like…), "Souls-like" miscategorized as difficulty, difficulty should be a scale, and later — too many options + picking many tags is self-defeating.
+- **Genres now = community tags, not Steam store-genres.** The gamer-meaningful genres only exist as tags. So ALL soft-pref options are tags now → everything saves to `preferred_tags`; `preferred_genres` left empty. (`preferenceScore` matches tags exactly, so this "just works".)
+- **Trimmed to ~16 headliner genres (flat list)** after an over-corrected 35-option grouped version. Plus a small Vibe & theme group + Difficulty.
+- **Difficulty is honest** — no fake Easy/Med/Hard scale (Steam has no difficulty rating). Just two soft leans: Challenging (`Difficult` tag) + Relaxing (`Relaxing` tag). Souls-like moved to RPG genres.
+- **Pick cap = MAX_PICKS (5).** KEY INSIGHT (drove the design): `preferenceScore = hits ÷ picks`, so many picks DILUTE the signal (a 12-tag combo matches ~nothing). New **`app/dashboard/preference-chips.tsx`** CLIENT component (first client component in the dashboard) holds selection state, greys out the rest at the cap, shows "Pick up to 5 (N/5)". Cap also enforced server-side in `updateRecommendations` (dedupe + slice) — don't trust the client.
+- **Mode relabeled** to gamer terms: Solo / Multiplayer / Co-op (play with friends); section heading "How you want to play".
+- Files: `preferences-options.ts` (rewritten: GENRE_OPTIONS flat 16, VIBE_TAGS, DIFFICULTY_OPTIONS, MAX_PICKS, TAG_OPTION_SET), `preference-chips.tsx` (new client comp), `page.tsx` (uses it; Mode still server-rendered Chip/ChipGroup), `actions.ts` (tag-only + cap).
+
 ## ▶ RESUME HERE (next session) — verify prefs click-through, then no-Steam seed path / game-length / RAG
 **Done up to now:** Phases 1–2, Phase 3 CORE, Step C, **Step D FULLY DONE**, **Step E BUILT** (catalog→1003 + soft-pref/weights UI; tsc+build clean, click-through pending). Pure `lib/reco/` untouched. RAWG stays DEFERRED (Steam-only v1).
 

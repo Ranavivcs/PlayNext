@@ -5,7 +5,8 @@ import { syncSteamLibrary, updateRecommendations } from "./actions";
 import type { HardFilters } from "@/lib/reco-data/filters";
 import { DEFAULT_WEIGHTS } from "@/lib/reco-data/user";
 import type { Weights } from "@/lib/reco/types";
-import { GENRE_OPTIONS, TAG_GROUPS, WEIGHT_FIELDS } from "./preferences-options";
+import { WEIGHT_FIELDS } from "./preferences-options";
+import { PreferenceChips } from "./preference-chips";
 
 interface Breakdown {
   content: number;
@@ -89,13 +90,13 @@ export default async function DashboardPage({
   const appliedFilters =
     (latestRec?.params as { filters?: HardFilters } | null)?.filters ?? {};
 
-  // Saved soft preferences (engine reads these on the next run).
+  // Saved soft preferences (engine reads these on the next run). Every UI option
+  // is a community tag, so selections live in preferred_tags.
   const { data: prefsRow } = await supabase
     .from("user_preferences")
-    .select("preferred_genres, preferred_tags, weights")
+    .select("preferred_tags, weights")
     .eq("user_id", user.id)
     .maybeSingle();
-  const selectedGenres = new Set((prefsRow?.preferred_genres as string[]) ?? []);
   const selectedTags = new Set((prefsRow?.preferred_tags as string[]) ?? []);
   const savedWeights: Weights = {
     ...DEFAULT_WEIGHTS,
@@ -224,12 +225,12 @@ export default async function DashboardPage({
                 action={updateRecommendations}
                 className="space-y-5 border-t border-gray-100 p-4"
               >
-                {/* Must match — hard filters */}
+                {/* How you play — the only hard filter */}
                 <div className="space-y-3">
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Must match</p>
+                    <p className="text-sm font-medium text-gray-700">How you want to play</p>
                     <p className="text-xs text-gray-400">
-                      Hard filter — results are limited to games that fit.
+                      The one hard filter — results are limited to games that fit.
                     </p>
                   </div>
                   <ChipGroup label="Mode">
@@ -255,30 +256,7 @@ export default async function DashboardPage({
                       score), they don&apos;t exclude anything.
                     </p>
                   </div>
-                  <ChipGroup label="Genres">
-                    {GENRE_OPTIONS.map((g) => (
-                      <Chip
-                        key={g}
-                        name="genre"
-                        value={g}
-                        label={g}
-                        defaultChecked={selectedGenres.has(g)}
-                      />
-                    ))}
-                  </ChipGroup>
-                  {TAG_GROUPS.map((group) => (
-                    <ChipGroup key={group.label} label={group.label}>
-                      {group.tags.map((t) => (
-                        <Chip
-                          key={t}
-                          name="tag"
-                          value={t}
-                          label={t}
-                          defaultChecked={selectedTags.has(t)}
-                        />
-                      ))}
-                    </ChipGroup>
-                  ))}
+                  <PreferenceChips initialSelected={[...selectedTags]} />
                 </div>
 
                 {/* Advanced — signal weights (power-user knobs) */}
@@ -415,11 +393,12 @@ export default async function DashboardPage({
 }
 
 // Mode is single-select; "" = Any (parseFilters treats it as no constraint).
+// "How do you want to play?" — the only hard filter. "" = Any (no constraint).
 const MODE_OPTIONS: { value: string; label: string }[] = [
   { value: "", label: "Any" },
-  { value: "single-player", label: "Single-player" },
+  { value: "single-player", label: "Solo" },
   { value: "multiplayer", label: "Multiplayer" },
-  { value: "co-op", label: "Co-op" },
+  { value: "co-op", label: "Co-op (play with friends)" },
 ];
 
 /** A label-wrapped, visually-hidden input styled as a toggle pill (pure CSS). */

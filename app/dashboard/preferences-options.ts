@@ -1,45 +1,59 @@
 // Curated soft-preference vocabulary for the dashboard. Values are EXACT
-// catalog strings (verified present in game_genres / game_tags) because the
-// engine's preferenceScore matches by exact, case-sensitive set membership.
-// Anything offered here that the catalog lacks would simply never match — so
-// every option below was confirmed present before being added.
+// catalog strings (verified present in game_tags with good coverage) because
+// the engine's preferenceScore matches by exact, case-sensitive set membership.
 //
-// Shared by app/dashboard/page.tsx (rendering) and actions.ts (validation).
-// Kept out of actions.ts because a "use server" module may only export async
-// functions.
+// IMPORTANT: every option here is a Steam *community tag*, so they all save into
+// `user_preferences.preferred_tags` (matched against game.tags). We deliberately
+// do NOT use Steam's coarse store-"genre" field. `preferred_genres` stays empty.
+//
+// Trimmed to ~16 headliner genres (flat, not grouped) + a few vibe/difficulty
+// leans. Selections are CAPPED (see MAX_PICKS): the engine's preference score is
+// hits ÷ (picks), so a handful of sharp picks ranks far better than many — and
+// the cap keeps the UI from becoming a wall.
+//
+// Shared by app/dashboard/page.tsx + preference-chips.tsx + actions.ts. Kept out
+// of actions.ts because a "use server" module may only export async functions.
 
+// The most-picked soft prefs we let a user select at once. Both a UX guardrail
+// and an algorithmic one (more picks dilute the preference signal).
+export const MAX_PICKS = 5;
+
+// ~16 recognizable headliner genres (community tags, flat).
 export const GENRE_OPTIONS = [
-  "Action",
-  "Adventure",
+  "Shooter",
+  "FPS",
   "RPG",
+  "Action RPG",
+  "JRPG",
   "Strategy",
+  "RTS",
   "Simulation",
-  "Indie",
-  "Casual",
   "Massively Multiplayer",
-  "Free To Play",
-  "Sports",
-  "Racing",
+  "MOBA",
+  "Rogue-like",
+  "Metroidvania",
+  "Platformer",
+  "Open World",
+  "Horror",
+  "Survival",
 ] as const;
 
-export interface TagGroup {
-  label: string;
-  tags: string[];
-}
+// Genuinely-not-genre leanings (feel + theme).
+export const VIBE_TAGS: string[] = ["Atmospheric", "Funny", "Story Rich", "Sci-fi", "Fantasy"];
 
-// "Difficulty" leads, since it was the user's explicit ask; difficulty is a
-// soft lean (community tags), never a hard guarantee. Playstyle/Mood/Theme are
-// all community tags from the same pool, so they collapse into one "Vibe &
-// style" group rather than a fake taxonomy.
-export const TAG_GROUPS: TagGroup[] = [
-  { label: "Difficulty", tags: ["Difficult", "Souls-like", "Relaxing", "Family Friendly"] },
-  {
-    label: "Vibe & style",
-    tags: ["Open World", "Story Rich", "Atmospheric", "Funny", "Horror", "Sci-fi", "Fantasy", "Stealth"],
-  },
+// Difficulty is NOT a real Steam rating — only these two community tags back it,
+// so we expose two honest leans (label ≠ tag value for "Challenging").
+export const DIFFICULTY_OPTIONS: { value: string; label: string }[] = [
+  { value: "Difficult", label: "Challenging" },
+  { value: "Relaxing", label: "Relaxing" },
 ];
 
-export const TAG_OPTIONS: string[] = TAG_GROUPS.flatMap((g) => g.tags);
+// Every selectable tag value, for server-side validation.
+export const TAG_OPTION_SET: ReadonlySet<string> = new Set([
+  ...GENRE_OPTIONS,
+  ...VIBE_TAGS,
+  ...DIFFICULTY_OPTIONS.map((d) => d.value),
+]);
 
 // Weight components exposed in the UI. `collab` is intentionally omitted: the
 // engine multiplies it by 0 until collaborative filtering ships, so tuning it
@@ -52,6 +66,3 @@ export const WEIGHT_FIELDS = [
 ] as const;
 
 export type WeightKey = (typeof WEIGHT_FIELDS)[number]["key"];
-
-export const GENRE_OPTION_SET: ReadonlySet<string> = new Set(GENRE_OPTIONS);
-export const TAG_OPTION_SET: ReadonlySet<string> = new Set(TAG_OPTIONS);
