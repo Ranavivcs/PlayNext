@@ -207,6 +207,12 @@ User (a gamer) flagged: store-genres too coarse (wanted Shooter/MMO/Rogue-like�
 - **Mode relabeled** to gamer terms: Solo / Multiplayer / Co-op (play with friends); section heading "How you want to play".
 - Files: `preferences-options.ts` (rewritten: GENRE_OPTIONS flat 16, VIBE_TAGS, DIFFICULTY_OPTIONS, MAX_PICKS, TAG_OPTION_SET), `preference-chips.tsx` (new client comp), `page.tsx` (uses it; Mode still server-rendered Chip/ChipGroup), `actions.ts` (tag-only + cap).
 
+### Step E follow-up 3: Mode/Difficulty/Vibe out of the cap, single-select (2026-06-01) ✅ BUILT (tsc+build clean)
+User: Mode + Difficulty must always be available and NOT count toward the 5-cap; opposing tags shouldn't be co-pickable.
+- **Cap now applies to GENRES ONLY** (`MAX_GENRE_PICKS=5`, multi-select). The client `GenrePicker` is genres-only now.
+- **Difficulty + Vibe & theme are SINGLE-select** radio chips (Any default), always available, uncapped. Single-select inherently blocks opposing picks (Sci-fi+Fantasy, Challenging+Relaxing). Rendered server-side (no client state needed), like Mode.
+- Form fields: `tag` (genres, cap 5) + `vibe` (single) + `difficulty` (single) + `mode` (hard filter). `actions.ts` validates each against its own set and merges genres+vibe+difficulty into `preferred_tags`. `page.tsx` splits saved `preferred_tags` back into genres/vibe/difficulty for pre-fill (`GENRE_OPTIONS` / `VIBE_OPTION_SET` / `DIFFICULTY_VALUE_SET`).
+
 ## ▶ RESUME HERE (next session) — verify prefs click-through, then no-Steam seed path / game-length / RAG
 **Done up to now:** Phases 1–2, Phase 3 CORE, Step C, **Step D FULLY DONE**, **Step E BUILT** (catalog→1003 + soft-pref/weights UI; tsc+build clean, click-through pending). Pure `lib/reco/` untouched. RAWG stays DEFERRED (Steam-only v1).
 

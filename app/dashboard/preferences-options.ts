@@ -6,19 +6,20 @@
 // `user_preferences.preferred_tags` (matched against game.tags). We deliberately
 // do NOT use Steam's coarse store-"genre" field. `preferred_genres` stays empty.
 //
-// Trimmed to ~16 headliner genres (flat, not grouped) + a few vibe/difficulty
-// leans. Selections are CAPPED (see MAX_PICKS): the engine's preference score is
-// hits ÷ (picks), so a handful of sharp picks ranks far better than many — and
-// the cap keeps the UI from becoming a wall.
+// Control model:
+//  - Genres: MULTI-select, capped at MAX_GENRE_PICKS (the only capped control).
+//    preferenceScore is hits ÷ picks, so a few sharp picks rank better than many.
+//  - Vibe & theme: SINGLE-select (prevents opposing picks like Sci-fi + Fantasy).
+//  - Difficulty: SINGLE-select (Challenging vs Relaxing are mutually exclusive).
+//  Vibe + Difficulty are always available and do NOT count toward the cap.
 //
-// Shared by app/dashboard/page.tsx + preference-chips.tsx + actions.ts. Kept out
-// of actions.ts because a "use server" module may only export async functions.
+// Shared by page.tsx + preference-chips.tsx + actions.ts. Kept out of actions.ts
+// because a "use server" module may only export async functions.
 
-// The most-picked soft prefs we let a user select at once. Both a UX guardrail
-// and an algorithmic one (more picks dilute the preference signal).
-export const MAX_PICKS = 5;
+// Cap on GENRE picks only. Both a UX guardrail and an algorithmic one.
+export const MAX_GENRE_PICKS = 5;
 
-// ~16 recognizable headliner genres (community tags, flat).
+// ~16 recognizable headliner genres (community tags). Multi-select, capped.
 export const GENRE_OPTIONS = [
   "Shooter",
   "FPS",
@@ -38,22 +39,22 @@ export const GENRE_OPTIONS = [
   "Survival",
 ] as const;
 
-// Genuinely-not-genre leanings (feel + theme).
-export const VIBE_TAGS: string[] = ["Atmospheric", "Funny", "Story Rich", "Sci-fi", "Fantasy"];
+// Feel + theme. Single-select.
+export const VIBE_OPTIONS = ["Atmospheric", "Funny", "Story Rich", "Sci-fi", "Fantasy"] as const;
 
-// Difficulty is NOT a real Steam rating — only these two community tags back it,
-// so we expose two honest leans (label ≠ tag value for "Challenging").
+// Difficulty is NOT a real Steam rating — only two community tags back it.
+// Single-select (label ≠ tag value for "Challenging").
 export const DIFFICULTY_OPTIONS: { value: string; label: string }[] = [
   { value: "Difficult", label: "Challenging" },
   { value: "Relaxing", label: "Relaxing" },
 ];
 
-// Every selectable tag value, for server-side validation.
-export const TAG_OPTION_SET: ReadonlySet<string> = new Set([
-  ...GENRE_OPTIONS,
-  ...VIBE_TAGS,
-  ...DIFFICULTY_OPTIONS.map((d) => d.value),
-]);
+// Per-field validation sets (server side).
+export const GENRE_OPTION_SET: ReadonlySet<string> = new Set(GENRE_OPTIONS);
+export const VIBE_OPTION_SET: ReadonlySet<string> = new Set(VIBE_OPTIONS);
+export const DIFFICULTY_VALUE_SET: ReadonlySet<string> = new Set(
+  DIFFICULTY_OPTIONS.map((d) => d.value),
+);
 
 // Weight components exposed in the UI. `collab` is intentionally omitted: the
 // engine multiplies it by 0 until collaborative filtering ships, so tuning it

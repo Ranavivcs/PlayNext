@@ -5,8 +5,15 @@ import { syncSteamLibrary, updateRecommendations } from "./actions";
 import type { HardFilters } from "@/lib/reco-data/filters";
 import { DEFAULT_WEIGHTS } from "@/lib/reco-data/user";
 import type { Weights } from "@/lib/reco/types";
-import { WEIGHT_FIELDS } from "./preferences-options";
-import { PreferenceChips } from "./preference-chips";
+import {
+  WEIGHT_FIELDS,
+  GENRE_OPTIONS,
+  VIBE_OPTIONS,
+  DIFFICULTY_OPTIONS,
+  VIBE_OPTION_SET,
+  DIFFICULTY_VALUE_SET,
+} from "./preferences-options";
+import { GenrePicker } from "./preference-chips";
 
 interface Breakdown {
   content: number;
@@ -97,7 +104,11 @@ export default async function DashboardPage({
     .select("preferred_tags, weights")
     .eq("user_id", user.id)
     .maybeSingle();
-  const selectedTags = new Set((prefsRow?.preferred_tags as string[]) ?? []);
+  const tagList = (prefsRow?.preferred_tags as string[]) ?? [];
+  // Split the saved tags back into their controls for pre-fill.
+  const savedGenres = tagList.filter((t) => (GENRE_OPTIONS as readonly string[]).includes(t));
+  const savedVibe = tagList.find((t) => VIBE_OPTION_SET.has(t)) ?? "";
+  const savedDifficulty = tagList.find((t) => DIFFICULTY_VALUE_SET.has(t)) ?? "";
   const savedWeights: Weights = {
     ...DEFAULT_WEIGHTS,
     ...((prefsRow?.weights as Partial<Weights> | null) ?? {}),
@@ -256,7 +267,45 @@ export default async function DashboardPage({
                       score), they don&apos;t exclude anything.
                     </p>
                   </div>
-                  <PreferenceChips initialSelected={[...selectedTags]} />
+                  <GenrePicker initialSelected={savedGenres} />
+                  <ChipGroup label="Vibe & theme">
+                    <Chip
+                      type="radio"
+                      name="vibe"
+                      value=""
+                      label="Any"
+                      defaultChecked={savedVibe === ""}
+                    />
+                    {VIBE_OPTIONS.map((v) => (
+                      <Chip
+                        key={v}
+                        type="radio"
+                        name="vibe"
+                        value={v}
+                        label={v}
+                        defaultChecked={savedVibe === v}
+                      />
+                    ))}
+                  </ChipGroup>
+                  <ChipGroup label="Difficulty">
+                    <Chip
+                      type="radio"
+                      name="difficulty"
+                      value=""
+                      label="Any"
+                      defaultChecked={savedDifficulty === ""}
+                    />
+                    {DIFFICULTY_OPTIONS.map((d) => (
+                      <Chip
+                        key={d.value}
+                        type="radio"
+                        name="difficulty"
+                        value={d.value}
+                        label={d.label}
+                        defaultChecked={savedDifficulty === d.value}
+                      />
+                    ))}
+                  </ChipGroup>
                 </div>
 
                 {/* Advanced — signal weights (power-user knobs) */}

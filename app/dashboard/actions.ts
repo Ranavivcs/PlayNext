@@ -8,7 +8,12 @@ import { generateRecommendations } from "@/lib/reco-data/run";
 import type { HardFilters } from "@/lib/reco-data/filters";
 import { DEFAULT_WEIGHTS } from "@/lib/reco-data/user";
 import type { Weights } from "@/lib/reco/types";
-import { TAG_OPTION_SET, MAX_PICKS } from "./preferences-options";
+import {
+  GENRE_OPTION_SET,
+  VIBE_OPTION_SET,
+  DIFFICULTY_VALUE_SET,
+  MAX_GENRE_PICKS,
+} from "./preferences-options";
 
 const VALID_MODES = ["single-player", "multiplayer", "co-op"] as const;
 
@@ -99,13 +104,20 @@ export async function updateRecommendations(formData: FormData) {
   //    coarse store-genre field) is intentionally left empty. Only keep options
   //    we offer (exact catalog strings); ignore anything else.
   const preferred_genres: string[] = [];
-  const preferred_tags = [
+  // Genres: multi-select, capped. Vibe + Difficulty: single-select, uncapped.
+  const genrePicks = [
     ...new Set(
       formData
         .getAll("tag")
-        .filter((v): v is string => typeof v === "string" && TAG_OPTION_SET.has(v)),
+        .filter((v): v is string => typeof v === "string" && GENRE_OPTION_SET.has(v)),
     ),
-  ].slice(0, MAX_PICKS);
+  ].slice(0, MAX_GENRE_PICKS);
+  const vibeRaw = formData.get("vibe");
+  const vibe = typeof vibeRaw === "string" && VIBE_OPTION_SET.has(vibeRaw) ? [vibeRaw] : [];
+  const diffRaw = formData.get("difficulty");
+  const difficulty =
+    typeof diffRaw === "string" && DIFFICULTY_VALUE_SET.has(diffRaw) ? [diffRaw] : [];
+  const preferred_tags = [...genrePicks, ...vibe, ...difficulty];
 
   const { data: existing } = await supabase
     .from("user_preferences")
