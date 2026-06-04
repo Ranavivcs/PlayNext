@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ingestLibrary } from "@/lib/steam/ingest";
 import { generateRecommendations } from "@/lib/reco-data/run";
+import { explainRecommendation } from "@/lib/ai/explain";
 import type { HardFilters } from "@/lib/reco-data/filters";
 import { DEFAULT_WEIGHTS } from "@/lib/reco-data/user";
 import type { Weights } from "@/lib/reco/types";
@@ -170,4 +171,118 @@ export async function updateRecommendations(formData: FormData) {
 
   revalidatePath("/dashboard");
   redirect(`/dashboard?recs_msg=${encodeURIComponent(`Updated — ${count} recommendations.`)}`);
+}
+
+/**
+ * Generate + persist the AI "why this matches you" blurb for one recommended
+ * game. Reads the game's real facts + the user's taste + the engine's score
+ * breakdown, calls the AI layer (lib/ai — explains, never ranks), and stores the
+ * result on the item. AI failure becomes a banner; the ranked list is unaffected.
+ */
+export async function explainRec(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const recId = formData.get("rec_id");
+  const appIdRaw = formData.get("app_id");
+  const appId = typeof appIdRaw === "string" ? parseInt(appIdRaw, 10) : NaN;
+  if (typeof recId !== "string" || !Number.isInteger(appId)) {
+    redirect(`/dashboard?recs_error=${encodeURIComponent("Invalid explanation request.")}`);
+  }
+
+  try {
+    // The score breakdown for this item (RLS returns it only if the user owns it).
+    const { data: item, error: itemErr } = await supabase
+      .from("recommendation_items")
+      .select("score_breakdown")
+      .eq("rec_id", recId)
+      .eq("app_id", appId)
+      .maybeSingle();
+    if (itemErr) throw new Error(itemErr.message);
+    if (!item) throw new Error("Recommendation not found.");
+
+    const [{ data: game }, { data: genres }, { data: tags }, { data: topGames }] =
+      await Promise.all([
+        supabase
+          .from("games")
+          .select("name, short_desc, total_reviews, positive_ratio")
+          .eq("app_id", appId)
+          .maybeSingle(),
+        supabase.from("game_genres").select("genre").eq("app_id", appId),
+        supabase
+          .from("game_tags")
+          .select("tag")
+          .eq("app_id", appId)
+          .order("votes", { ascending: false })
+          .limit(12),
+        supabase
+          .from("user_games")
+          .select("playtime_forever, games(name)")
+          .eq("user_id", user.id)
+          .order("playtime_forever", { ascending: false })
+          .limit(5),
+      ]);
+    if (!game) throw new Error("Game not found.");
+
+    // Taste summary: top-played games, else fall back to saved preferred tags.
+    const topNames = (topGames ?? [])
+      .map((r) => {
+        const g = (r as { games: { name: string } | { name: string }[] | null }).games;
+        const one = Array.isArray(g) ? g[0] : g;
+        return one?.name;
+      })
+      .filter((n): n is string => Boolean(n));
+    let tasteSummary = topNames.length ? `plays a lot of ${topNames.join(", ")}` : "";
+    if (!tasteSummary) {
+      const { data: prefs } = await supabase
+        .from("user_preferences")
+        .select("preferred_tags")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const t = (prefs?.preferred_tags as string[] | null) ?? [];
+      if (t.length) tasteSummary = `likes ${t.join(", ")} games`;
+    }
+
+    const bd =
+      (item.score_breakdown as {
+        content?: number;
+        preference?: number;
+        popularity?: number;
+        recency?: number;
+      } | null) ?? {};
+
+    const explanation = await explainRecommendation({
+      game: {
+        name: game.name as string,
+        genres: (genres ?? []).map((r) => r.genre as string),
+        tags: (tags ?? []).map((r) => r.tag as string),
+        shortDesc: (game.short_desc as string | null) ?? null,
+        totalReviews: (game.total_reviews as number | null) ?? null,
+        positiveRatio: (game.positive_ratio as number | null) ?? null,
+      },
+      tasteSummary,
+      breakdown: {
+        content: Number(bd.content) || 0,
+        preference: Number(bd.preference) || 0,
+        popularity: Number(bd.popularity) || 0,
+        recency: Number(bd.recency) || 0,
+      },
+    });
+
+    const { error: updErr } = await supabase
+      .from("recommendation_items")
+      .update({ ai_explanation: explanation })
+      .eq("rec_id", recId)
+      .eq("app_id", appId);
+    if (updErr) throw new Error(updErr.message);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Could not generate explanation.";
+    redirect(`/dashboard?recs_error=${encodeURIComponent(msg)}`);
+  }
+
+  revalidatePath("/dashboard");
+  redirect("/dashboard");
 }

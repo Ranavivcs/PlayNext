@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "../login/actions";
-import { syncSteamLibrary, updateRecommendations } from "./actions";
+import { syncSteamLibrary, updateRecommendations, explainRec } from "./actions";
 import type { HardFilters } from "@/lib/reco-data/filters";
 import { DEFAULT_WEIGHTS } from "@/lib/reco-data/user";
 import type { Weights } from "@/lib/reco/types";
@@ -122,12 +122,13 @@ export default async function DashboardPage({
     breakdown: Breakdown;
     name: string;
     headerImage: string | null;
+    aiExplanation: string | null;
   }[] = [];
 
   if (latestRec) {
     const { data: itemsRaw } = await supabase
       .from("recommendation_items")
-      .select("app_id, rank, score, score_breakdown, games(name, header_image)")
+      .select("app_id, rank, score, score_breakdown, ai_explanation, games(name, header_image)")
       .eq("rec_id", latestRec.id)
       .order("rank", { ascending: true });
 
@@ -137,6 +138,7 @@ export default async function DashboardPage({
         rank: number;
         score: number;
         score_breakdown: Breakdown | null;
+        ai_explanation: string | null;
         games:
           | { name: string; header_image: string | null }
           | { name: string; header_image: string | null }[]
@@ -156,6 +158,7 @@ export default async function DashboardPage({
         },
         name: game?.name ?? `App ${r.app_id}`,
         headerImage: game?.header_image ?? null,
+        aiExplanation: r.ai_explanation ?? null,
       };
     });
   }
@@ -350,7 +353,7 @@ export default async function DashboardPage({
             {recItems.length > 0 ? (
               <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {recItems.map((item) => (
-                  <RecCard key={item.appId} item={item} />
+                  <RecCard key={item.appId} item={item} recId={latestRec!.id} />
                 ))}
               </ul>
             ) : (
@@ -504,6 +507,7 @@ const BREAKDOWN_PARTS: { key: keyof Breakdown; label: string; color: string }[] 
 
 function RecCard({
   item,
+  recId,
 }: {
   item: {
     appId: number;
@@ -512,7 +516,9 @@ function RecCard({
     breakdown: Breakdown;
     name: string;
     headerImage: string | null;
+    aiExplanation: string | null;
   };
+  recId: string;
 }) {
   const total = BREAKDOWN_PARTS.reduce((s, p) => s + Math.max(0, item.breakdown[p.key]), 0);
   return (
@@ -551,6 +557,24 @@ function RecCard({
             </li>
           ))}
         </ul>
+
+        {/* AI explanation: show the saved blurb, or a button to generate it. */}
+        {item.aiExplanation ? (
+          <p className="border-t border-gray-100 pt-2 text-xs leading-relaxed text-gray-600">
+            {item.aiExplanation}
+          </p>
+        ) : (
+          <form action={explainRec} className="border-t border-gray-100 pt-2">
+            <input type="hidden" name="rec_id" value={recId} />
+            <input type="hidden" name="app_id" value={item.appId} />
+            <button
+              type="submit"
+              className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+            >
+              ✨ Why this match?
+            </button>
+          </form>
+        )}
       </div>
     </li>
   );
