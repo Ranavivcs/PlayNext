@@ -6,7 +6,13 @@ PlayNext links your Steam account, learns your taste from the games you own and
 how long you've played them, and ranks games you don't own yet. The ranking is a
 **real algorithm** — TF-IDF over genres/community tags, playtime-weighted cosine
 similarity, damped popularity, recency, soft preferences, and MMR for diversity.
-A later AI/RAG layer will only *explain* the ranked results; **it never ranks.**
+A separate AI layer only *explains* the ranked results — a per-game "why this
+matches you" blurb generated **after** ranking; **it never ranks.**
+
+**Two ways to use it:**
+1. **Steam users** — link your account; recommendations come from your library + playtime.
+2. **No Steam (or want something specific)** — pick a few games you like; PlayNext
+   finds similar ones. Both paths feed the same engine (picked games become the taste seed).
 
 > CS final project. The point is that we own the algorithm and architecture — the
 > AI layer is one explainable component, not the engine.
@@ -17,9 +23,13 @@ A later AI/RAG layer will only *explain* the ranked results; **it never ranks.**
 |-------|------|-------|
 | 1 | Foundation (Next.js + Supabase + Auth, schema/RLS) | ✅ Done |
 | 2 | Steam linking (OpenID) + library ingest | ✅ Done |
-| 3 | Recommendation engine + metadata enrichment + dashboard | ✅ Done |
-| 4 | Embeddings (pgvector) + AI/RAG explanations | ⏳ Planned |
-| — | Collaborative filtering | ⏳ Stretch |
+| 3 | Recommendation engine + metadata enrichment + games-first dashboard (hard filters, soft preferences, seed-based "pick games" path) | ✅ Done |
+| 4 | AI explanations — per-game "why this match?" (Claude Haiku, grounded, explains-never-ranks) | ✅ Done |
+| 5 | Embeddings (pgvector) + semantic RAG chat ("ask about these recs") | ⏳ Planned |
+| — | Collaborative filtering · deploy to Vercel · classic-CS-algorithm integration | ⏳ Next / stretch |
+
+Shared catalog: **~2,500 enriched games** (SteamSpy top-owned + Steam `appdetails` —
+genres, community tags, categories, platforms, reviews, release date).
 
 See [`docs/progress.md`](docs/progress.md) for the detailed running log (the
 `▶ RESUME HERE` section at the bottom is the current todo list).
@@ -27,7 +37,7 @@ See [`docs/progress.md`](docs/progress.md) for the detailed running log (the
 ## Tech stack
 
 Next.js 16 (App Router) · React 19 · TypeScript · Tailwind · Supabase
-(Postgres + pgvector + Auth) · Claude API (Phase 4). All TypeScript — no Python.
+(Postgres + pgvector + Auth) · Claude API (explanations). All TypeScript — no Python.
 
 > Next.js 16 differs from older docs: `cookies()`, `headers()`, page `params` and
 > `searchParams` are **async**; route protection lives in `proxy.ts` (not
@@ -48,7 +58,8 @@ route → fetch (steam / db) → reco → ai → response
   Supabase client is **injected** so it runs under both a service-role script and
   a user-scoped server action.
 - **`lib/steam/`** — Steam Web API + OpenID + metadata enrichment fetchers.
-- **`lib/ai/`** — RAG/LLM explanations (Phase 4). Explains, never ranks.
+- **`lib/ai/`** — LLM explanations (Claude Haiku, grounded only in the ranked
+  game's facts + your taste). Explains, never ranks. Semantic RAG chat is Phase 5.
 - **`lib/supabase/`** — `client` (browser), `server` (RSC/actions), `admin`
   (service-role, **server-only — never in browser code**).
 
@@ -89,8 +100,8 @@ Fill in `.env.local` (never commit it — it's gitignored):
 | `SUPABASE_SERVICE_ROLE_KEY` | same | **server-only**, bypasses RLS |
 | `STEAM_API_KEY` | steamcommunity.com/dev/apikey | |
 | `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` for local | Steam OpenID return URL |
-| `ANTHROPIC_API_KEY` | console.anthropic.com | Phase 4 |
-| `EMBEDDINGS_API_KEY` | TBD | Phase 4 — leave blank |
+| `ANTHROPIC_API_KEY` | console.anthropic.com | Powers the "why this match?" explanations |
+| `EMBEDDINGS_API_KEY` | TBD | Phase 5 (RAG chat) — leave blank |
 
 ### 3. Apply the database schema
 Run the SQL in `supabase/migrations/` (in order) against your Supabase project.
@@ -101,8 +112,12 @@ the files in this repo are the source of truth.
 ```bash
 npm run dev          # http://localhost:3000
 ```
-Then: sign up → link your Steam account → **Sync library** → **Update
-recommendations** on the dashboard.
+Then sign up and either:
+- **Link your Steam account** → **Sync library** → **Update recommendations**, or
+- skip Steam and **pick a few games you like** in the Adjust panel — recommendations
+  come from those seeds.
+
+On each ranked card, hit **✨ Why this match?** for a grounded one-line explanation.
 
 > Steam library import requires your Steam profile's **Game details** privacy to
 > be **Public** (separate from overall profile visibility).
