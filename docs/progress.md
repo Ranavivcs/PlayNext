@@ -213,6 +213,14 @@ User: Mode + Difficulty must always be available and NOT count toward the 5-cap;
 - **Difficulty + Vibe & theme are SINGLE-select** radio chips (Any default), always available, uncapped. Single-select inherently blocks opposing picks (Sci-fi+Fantasy, Challenging+Relaxing). Rendered server-side (no client state needed), like Mode.
 - Form fields: `tag` (genres, cap 5) + `vibe` (single) + `difficulty` (single) + `mode` (hard filter). `actions.ts` validates each against its own set and merges genres+vibe+difficulty into `preferred_tags`. `page.tsx` splits saved `preferred_tags` back into genres/vibe/difficulty for pre-fill (`GENRE_OPTIONS` / `VIBE_OPTION_SET` / `DIFFICULTY_VALUE_SET`).
 
+## Phase 3 — Step F: seed-based recommendations (no-Steam / "pick games" path) ✅ BUILT & ENGINE-VERIFIED (2026-06-01)
+Completes the TWO-ENTRY-PATH product vision (Steam library OR hand-picked games). DECIDED with user: available to **logged-in users** (no anonymous/public page); seeds **replace the library** for that run (taste from seeds only).
+- **Engine** (`lib/reco-data/run.ts`): `generateRecommendations` gained `seedAppIds?`. When non-empty: `owned` = seeds (flat playtime 60 → equal-weight taste centroid), and the user's REAL library is folded into `dismissedAppIds` so owned games still aren't recommended. `params.seedAppIds` persisted. Pure `lib/reco/` untouched (seeds are just an `owned` list — cold-start/seed support was always there).
+- **Search** (`app/api/catalog/search/route.ts`): GET `?q=` → `games` name ILIKE, enriched-only, popularity-ordered, top 12 `{appId,name,headerImage}`. Auth-guarded (defensive 401 + proxy).
+- **UI** (`app/dashboard/seed-picker.tsx`, new CLIENT comp): debounced search box → results dropdown w/ thumbnails → pick up to 5 as removable chips → hidden `seed` inputs post with the Adjust form. `actions.ts` `updateRecommendations` parses `seed` app_ids (int, dedupe, cap 5) → `seedAppIds`. `page.tsx`: SeedPicker at top of the form; the `gameCount>0` gate REMOVED so no-Steam users can use it (hint shown when no library).
+- **LIVE-VERIFIED** (admin script, persist:false): seeds = Monster Hunter World / NieR:Automata / Monster Hunter Rise → top recs Elden Ring, DBZ Kakarot, Devil May Cry 5, Kingdom Hearts (content-driven, sane action-RPG/JRPG neighborhood); seeds excluded from results. `tsc` + `next build` clean.
+- **NOT yet verified (needs user):** the in-browser search-dropdown UX + logged-in seed click-through.
+
 ## ▶ RESUME HERE (next session) — verify prefs click-through, then no-Steam seed path / game-length / RAG
 **Done up to now:** Phases 1–2, Phase 3 CORE, Step C, **Step D FULLY DONE**, **Step E BUILT** (catalog→1003 + soft-pref/weights UI; tsc+build clean, click-through pending). Pure `lib/reco/` untouched. RAWG stays DEFERRED (Steam-only v1).
 

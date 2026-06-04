@@ -142,13 +142,24 @@ export async function updateRecommendations(formData: FormData) {
   }
 
   // 2. Generate with the hard filters (engine reads the prefs we just saved).
+  //    Seed games (if any) become the taste source for this run, capped at 5.
   const filters = parseFilters(formData);
+  const seedAppIds = [
+    ...new Set(
+      formData
+        .getAll("seed")
+        .map((v) => (typeof v === "string" ? parseInt(v, 10) : NaN))
+        .filter((n) => Number.isInteger(n) && n > 0),
+    ),
+  ].slice(0, 5);
+
   let count = 0;
   try {
     const { results } = await generateRecommendations({
       client: supabase,
       userId: user.id,
       filters,
+      seedAppIds,
       persist: true,
     });
     count = results.length;

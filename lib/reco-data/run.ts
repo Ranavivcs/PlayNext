@@ -21,6 +21,14 @@ export interface RunOptions {
   now?: Date;
   /** Persist to recommendations/recommendation_items (default true). */
   persist?: boolean;
+  /**
+   * Seed-based mode: when non-empty, taste comes ONLY from these games (the
+   * user's Steam library is ignored for the taste vector), so a user without a
+   * linked library — or one who wants recs based on specific games — can still
+   * get recommendations. The user's owned library is still excluded from the
+   * results (you don't want to be recommended games you already have).
+   */
+  seedAppIds?: number[];
 }
 
 export interface RunResult {
@@ -62,27 +70,41 @@ async function persistRun(
 }
 
 export async function generateRecommendations(opts: RunOptions): Promise<RunResult> {
-  const { client, userId, filters = {}, topK, mmrLambda, now, persist = true } = opts;
+  const { client, userId, filters = {}, topK, mmrLambda, now, persist = true, seedAppIds } = opts;
 
   const [catalog, user] = await Promise.all([
     loadCatalog(client),
     loadUserContext(client, userId),
   ]);
 
+  const useSeeds = Array.isArray(seedAppIds) && seedAppIds.length > 0;
+
+  // Seed mode: taste comes from the picked games (flat playtime → equal weight),
+  // ignoring the Steam library. Otherwise taste comes from the owned library.
+  const owned = useSeeds
+    ? seedAppIds.map((appId) => ({ appId, playtimeMinutes: 60 }))
+    : user.owned;
+
+  // Still never recommend games the user actually owns — in seed mode the real
+  // library isn't the taste source but is folded into the exclusion set.
+  const dismissedAppIds = useSeeds
+    ? [...new Set([...user.dismissedAppIds, ...user.owned.map((o) => o.appId)])]
+    : user.dismissedAppIds;
+
   const ownedFeatures = await loadFeaturesFor(
     client,
-    user.owned.map((o) => o.appId),
+    owned.map((o) => o.appId),
   );
 
   const candidates = applyHardFilters(catalog, filters).map((e) => e.features);
 
   const results = recommend({
     candidates,
-    owned: user.owned,
+    owned,
     ownedFeatures,
     preferredGenres: user.preferredGenres,
     preferredTags: user.preferredTags,
-    dismissedAppIds: user.dismissedAppIds,
+    dismissedAppIds,
     weights: user.weights,
     topK,
     mmrLambda,
@@ -94,7 +116,13 @@ export async function generateRecommendations(opts: RunOptions): Promise<RunResu
     recId = await persistRun(
       client,
       userId,
-      { weights: user.weights, filters, topK: topK ?? null, mmrLambda: mmrLambda ?? null },
+      {
+        weights: user.weights,
+        filters,
+        topK: topK ?? null,
+        mmrLambda: mmrLambda ?? null,
+        seedAppIds: useSeeds ? seedAppIds : null,
+      },
       results,
     );
   }
