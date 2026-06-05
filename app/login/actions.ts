@@ -58,8 +58,10 @@ export async function requestPasswordReset(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
   if (email) {
     const supabase = await createClient();
+    // No query string on redirectTo — Supabase matches it against the allowlist
+    // exactly, and a `?next=` param makes it fall back to the Site URL (homepage).
     await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${getSiteUrl()}/auth/callback?next=/reset-password`,
+      redirectTo: `${getSiteUrl()}/auth/callback`,
     });
   }
   // Always report success — don't reveal whether an email is registered.
