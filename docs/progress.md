@@ -267,6 +267,13 @@ User flagged the "stuck account" gap (link Steam → forget account → library 
 ### Wrong-email mystery — RESOLVED ✅ (stale session, not a bug)
 - User signed up `ranaviv.cs@gmail.com` (verified in DB: created + signed in today, display_name "Ran-test") but the header had shown `ranaviv1991@gmail.com` (old test acct, **last sign-in May 29 — never on prod**) → a leftover/stale session in that browser. After sign-out → sign-in → refresh, the header correctly showed the picked name. No code bug.
 
+### Password UX polish (2026-06-05) ✅ BUILT (tsc + build clean)
+- **`components/password-fields.tsx`** (NEW client component) — new-password + confirm-password with a **show/hide toggle** and a dependency-free **strength meter** (0–4 from length + char-class variety → Very weak…Strong, colored bar). Posts `password` + `confirm_password`.
+- Used by **signup** and **reset-password** (replaced their plain password inputs). Confirm-match is **also enforced server-side** in `signup` and `updatePassword` (don't trust the client).
+- **After a reset, sign out → `/login?message=…`** (DECIDED with user) — user signs in fresh with the new password (confirms it), instead of dropping straight into the dashboard.
+- **Reset flow root-cause fix shipped earlier this session:** request-origin (`lib/origin.ts`) instead of `NEXT_PUBLIC_SITE_URL` for the email link + callback redirect — `NEXT_PUBLIC_*` is baked at build time, so a stale Vercel value produced localhost links. LIVE-VERIFIED: reset email → set new password → works on prod.
+- Steam linking on prod still uses `getSiteUrl()` (NEXT_PUBLIC_SITE_URL); ensure that Vercel var = prod URL, or give Steam the same `getOrigin()` treatment next.
+
 ## ▶ RESUME HERE (next session)
 **Done up to now:** Phases 1–2; **Phase 3 FULLY DONE** (CORE; Step C **2533-game** catalog; Step D bridge + games-first dashboard + hard filters; Step E soft-pref UX = rich tag-genres, 5-pick cap, single-select vibe/difficulty); **Step F seed-based recs** (no-Steam "pick games" path, live-verified); **Phase 4 AI explanations DONE & live-verified** (per-card "Why this match?", Haiku); **README refreshed + full visual redesign to a dark+neon theme across landing/auth/dashboard** (built clean; dashboard awaits a logged-in click-through). App renamed **GameMatch AI → PlayNext**, pushed to **github.com/Ranavivcs/PlayNext** (private). Pure `lib/reco/` still untouched. RAWG DEFERRED (Steam-only v1).
 

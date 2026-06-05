@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { signup } from "../login/actions";
+import { PasswordFields } from "@/components/password-fields";
 
 export default async function SignupPage({
   searchParams,
@@ -40,19 +41,7 @@ export default async function SignupPage({
               </label>
               <input id="email" name="email" type="email" required className="field" />
             </div>
-            <div className="space-y-1.5">
-              <label htmlFor="password" className="text-sm font-medium">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                minLength={6}
-                className="field"
-              />
-            </div>
+            <PasswordFields label="Password" />
             <button type="submit" className="btn btn-primary w-full">
               Sign up
             </button>
