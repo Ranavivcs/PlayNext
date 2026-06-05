@@ -7,9 +7,12 @@ import { getSiteUrl } from "@/lib/steam/openid";
 export async function GET(request: NextRequest) {
   const site = getSiteUrl();
   const code = request.nextUrl.searchParams.get("code");
-  const next = request.nextUrl.searchParams.get("next") ?? "/dashboard";
-  // Only allow same-site relative redirects.
-  const dest = next.startsWith("/") ? next : "/dashboard";
+  // Password reset is currently the only email-link flow, so default here is the
+  // set-new-password page. A `next` param (same-site only) can override it; note
+  // that if you add one, the redirectTo with that query must be allowlisted in
+  // Supabase or it falls back to the Site URL.
+  const next = request.nextUrl.searchParams.get("next") ?? "/reset-password";
+  const dest = next.startsWith("/") ? next : "/reset-password";
 
   if (!code) {
     const msg = encodeURIComponent("Invalid or expired link. Please try again.");
