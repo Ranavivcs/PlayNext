@@ -176,6 +176,8 @@ export type SteamSpyDetails = {
   totalReviews: number;
   /** 0..1 share of positive reviews; 0 when there are no reviews. */
   positiveRatio: number;
+  /** Median total playtime across owners, minutes (length proxy); null if absent. */
+  medianForever: number | null;
 };
 
 /**
@@ -202,12 +204,15 @@ export async function getSteamSpyAppDetails(appId: number): Promise<SteamSpyDeta
     votes: Number(votes) || 0,
   }));
 
+  const median = Number(d.median_forever);
+
   return {
     appId,
     name: typeof d.name === "string" ? d.name : `App ${appId}`,
     tags,
     totalReviews: total,
     positiveRatio: total > 0 ? positive / total : 0,
+    medianForever: Number.isFinite(median) && median > 0 ? median : null,
   };
 }
 

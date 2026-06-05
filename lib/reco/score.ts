@@ -1,6 +1,6 @@
 // Scalar scoring terms. Pure: each returns a value in [0, 1].
 
-import type { GameFeatures } from "./types.ts";
+import type { GameFeatures, GameLength } from "./types.ts";
 
 export function clamp01(x: number): number {
   if (Number.isNaN(x)) return 0;
@@ -38,22 +38,53 @@ export function recencyScore(releaseDate: string | null | undefined, now: Date):
   return clamp01(Math.pow(0.5, ageYears / HALF_LIFE_YEARS));
 }
 
+// Game-length buckets, from median total playtime (minutes).
+const SHORT_MAX_MIN = 300; // ≤ 5h
+const MEDIUM_MAX_MIN = 1200; // ≤ 20h
+const LENGTH_ORDER: Record<GameLength, number> = { short: 0, medium: 1, long: 2 };
+
+/** Bucket a game's median playtime; null when unknown (missing/non-positive). */
+export function lengthBucket(medianMinutes: number | null | undefined): GameLength | null {
+  if (medianMinutes == null || medianMinutes <= 0) return null;
+  if (medianMinutes <= SHORT_MAX_MIN) return "short";
+  if (medianMinutes <= MEDIUM_MAX_MIN) return "medium";
+  return "long";
+}
+
 /**
- * Fraction of the user's stated preferences (genres + tags) that this game
- * matches. Denominator is the total number of preferences so a game matching
- * all of them scores 1; no preferences → 0.
+ * Graded 0..1 match between a game's length and the preferred length: exact
+ * bucket = 1, adjacent = 0.5, far = 0. Unknown length scores 0.5 (neutral) so
+ * games SteamSpy lacks playtime data for are neither rewarded nor punished.
+ */
+export function lengthMatch(
+  medianMinutes: number | null | undefined,
+  preferred: GameLength,
+): number {
+  const bucket = lengthBucket(medianMinutes);
+  if (bucket === null) return 0.5;
+  const dist = Math.abs(LENGTH_ORDER[bucket] - LENGTH_ORDER[preferred]);
+  return dist === 0 ? 1 : dist === 1 ? 0.5 : 0;
+}
+
+/**
+ * Fraction of the user's stated preferences (genres + tags + optional length)
+ * that this game matches. Denominator is the total number of preferences so a
+ * game matching all of them scores 1; no preferences → 0. A preferred length
+ * counts as one criterion with graded credit (see lengthMatch).
  */
 export function preferenceScore(
   game: GameFeatures,
   preferredGenres: string[] = [],
   preferredTags: string[] = [],
+  preferredLength?: GameLength | null,
 ): number {
-  const total = preferredGenres.length + preferredTags.length;
+  const total = preferredGenres.length + preferredTags.length + (preferredLength ? 1 : 0);
   if (total === 0) return 0;
   const genres = new Set(game.genres);
   const tags = new Set(game.tags);
   let hits = 0;
   for (const g of preferredGenres) if (genres.has(g)) hits++;
   for (const t of preferredTags) if (tags.has(t)) hits++;
+  if (preferredLength) hits += lengthMatch(game.medianPlaytimeMinutes, preferredLength);
   return clamp01(hits / total);
 }

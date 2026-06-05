@@ -9,6 +9,9 @@ export interface Weights {
   collab: number;
 }
 
+/** Game-length / time-investment bucket (from median total playtime). */
+export type GameLength = "short" | "medium" | "long";
+
 /** Feature record for a single game (one row of the catalog). */
 export interface GameFeatures {
   appId: number;
@@ -21,6 +24,8 @@ export interface GameFeatures {
   positiveRatio: number;
   /** ISO date (yyyy-mm-dd) used for the recency term; optional. */
   releaseDate?: string | null;
+  /** Median total playtime in minutes (SteamSpy median_forever); length proxy. */
+  medianPlaytimeMinutes?: number | null;
   /** Optional dense semantic vector (Phase 4); unused until embeddings exist. */
   embedding?: number[];
 }
@@ -43,6 +48,8 @@ export interface RecommendInput {
   ownedFeatures?: GameFeatures[];
   preferredGenres?: string[];
   preferredTags?: string[];
+  /** Preferred game length; folded into the preference term. */
+  preferredLength?: GameLength | null;
   dismissedAppIds?: number[];
   weights: Weights;
   /** How many results to return (default 10). */

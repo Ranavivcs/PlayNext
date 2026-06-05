@@ -36,10 +36,14 @@ interface GameRow {
   total_reviews: number | null;
   positive_ratio: number | null;
   release_date: string | null;
+  median_playtime: number | null;
   platform_windows: boolean;
   platform_mac: boolean;
   platform_linux: boolean;
 }
+
+const GAME_COLUMNS =
+  "app_id,name,total_reviews,positive_ratio,release_date,median_playtime,platform_windows,platform_mac,platform_linux";
 
 /** Group child rows (genre/tag/category) by app_id into string arrays. */
 function groupBy<T extends { app_id: number }>(
@@ -62,12 +66,7 @@ function groupBy<T extends { app_id: number }>(
  */
 export async function loadCatalog(client: SupabaseClient): Promise<CatalogEntry[]> {
   const [games, genreRows, tagRows, categoryRows] = await Promise.all([
-    loadAll<GameRow>(
-      client,
-      "games",
-      "app_id,name,total_reviews,positive_ratio,release_date,platform_windows,platform_mac,platform_linux",
-      (q) => q.not("enriched_at", "is", null),
-    ),
+    loadAll<GameRow>(client, "games", GAME_COLUMNS, (q) => q.not("enriched_at", "is", null)),
     loadAll<{ app_id: number; genre: string }>(client, "game_genres", "app_id,genre"),
     loadAll<{ app_id: number; tag: string }>(client, "game_tags", "app_id,tag"),
     loadAll<{ app_id: number; category: string }>(
@@ -90,6 +89,7 @@ export async function loadCatalog(client: SupabaseClient): Promise<CatalogEntry[
       totalReviews: g.total_reviews ?? 0,
       positiveRatio: g.positive_ratio ?? 0,
       releaseDate: g.release_date,
+      medianPlaytimeMinutes: g.median_playtime,
     };
     return {
       features,
@@ -116,12 +116,7 @@ export async function loadFeaturesFor(
   const ids = [...new Set(appIds)];
 
   const [games, genreRows, tagRows] = await Promise.all([
-    loadAll<GameRow>(
-      client,
-      "games",
-      "app_id,name,total_reviews,positive_ratio,release_date,platform_windows,platform_mac,platform_linux",
-      (q) => q.in("app_id", ids),
-    ),
+    loadAll<GameRow>(client, "games", GAME_COLUMNS, (q) => q.in("app_id", ids)),
     loadAll<{ app_id: number; genre: string }>(client, "game_genres", "app_id,genre", (q) =>
       q.in("app_id", ids),
     ),
@@ -141,5 +136,6 @@ export async function loadFeaturesFor(
     totalReviews: g.total_reviews ?? 0,
     positiveRatio: g.positive_ratio ?? 0,
     releaseDate: g.release_date,
+    medianPlaytimeMinutes: g.median_playtime,
   }));
 }

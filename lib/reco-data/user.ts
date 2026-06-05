@@ -4,7 +4,7 @@
 // user's own client so the owner-only policies apply.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { OwnedGame, Weights } from "../reco/types.ts";
+import type { GameLength, OwnedGame, Weights } from "../reco/types.ts";
 
 // Mirrors the user_preferences.weights default in 0001_initial_schema.sql.
 export const DEFAULT_WEIGHTS: Weights = {
@@ -20,7 +20,15 @@ export interface UserContext {
   weights: Weights;
   preferredGenres: string[];
   preferredTags: string[];
+  preferredLength: GameLength | null;
   dismissedAppIds: number[];
+}
+
+const LENGTHS: readonly GameLength[] = ["short", "medium", "long"];
+function coerceLength(raw: unknown): GameLength | null {
+  return typeof raw === "string" && (LENGTHS as readonly string[]).includes(raw)
+    ? (raw as GameLength)
+    : null;
 }
 
 const PAGE = 1000;
@@ -66,7 +74,7 @@ export async function loadUserContext(
     loadOwned(client, userId),
     client
       .from("user_preferences")
-      .select("preferred_genres,preferred_tags,weights")
+      .select("preferred_genres,preferred_tags,preferred_length,weights")
       .eq("user_id", userId)
       .maybeSingle(),
     client
@@ -89,6 +97,7 @@ export async function loadUserContext(
     weights: coerceWeights(prefs?.weights),
     preferredGenres: (prefs?.preferred_genres as string[]) ?? [],
     preferredTags: (prefs?.preferred_tags as string[]) ?? [],
+    preferredLength: coerceLength(prefs?.preferred_length),
     dismissedAppIds,
   };
 }
