@@ -24,9 +24,15 @@ export async function login(formData: FormData) {
 export async function signup(formData: FormData) {
   const supabase = await createClient();
 
+  const password = String(formData.get("password"));
+  const confirm = String(formData.get("confirm_password"));
+  if (password !== confirm) {
+    redirect(`/signup?error=${encodeURIComponent("Passwords don't match.")}`);
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email: String(formData.get("email")),
-    password: String(formData.get("password")),
+    password,
     options: {
       data: { display_name: String(formData.get("display_name") ?? "") },
     },
@@ -73,6 +79,11 @@ export async function requestPasswordReset(formData: FormData) {
 // Set a new password. Requires the recovery session created by /auth/callback.
 export async function updatePassword(formData: FormData) {
   const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm_password") ?? "");
+  if (password !== confirm) {
+    redirect(`/reset-password?error=${encodeURIComponent("Passwords don't match.")}`);
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -86,6 +97,10 @@ export async function updatePassword(formData: FormData) {
     redirect(`/reset-password?error=${encodeURIComponent(error.message)}`);
   }
 
+  // Sign out so they confirm the new password by signing in fresh.
+  await supabase.auth.signOut();
   revalidatePath("/", "layout");
-  redirect("/dashboard?account_msg=Password+updated.");
+  redirect(
+    `/login?message=${encodeURIComponent("Password updated — sign in with your new password.")}`,
+  );
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { updatePassword } from "../login/actions";
+import { PasswordFields } from "@/components/password-fields";
 
 export default async function ResetPasswordPage({
   searchParams,
@@ -40,19 +41,7 @@ export default async function ResetPasswordPage({
           {error && <p className="mb-4 rounded-lg banner-err px-3 py-2 text-sm">{error}</p>}
 
           <form action={updatePassword} className="space-y-4">
-            <div className="space-y-1.5">
-              <label htmlFor="password" className="text-sm font-medium">
-                New password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                minLength={6}
-                className="field"
-              />
-            </div>
+            <PasswordFields label="New password" />
             <button type="submit" className="btn btn-primary w-full">
               Update password
             </button>
