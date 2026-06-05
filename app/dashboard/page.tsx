@@ -164,60 +164,47 @@ export default async function DashboardPage({
   }
 
   return (
-    <main className="flex-1 p-8">
-      <header className="mb-8 flex items-center justify-between border-b pb-4">
-        <div>
-          <h1 className="text-xl font-semibold">PlayNext</h1>
-          <p className="text-sm text-gray-500">{user.email}</p>
-        </div>
-        <form action={signOut}>
-          <button
-            type="submit"
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50"
-          >
-            Sign out
-          </button>
-        </form>
-      </header>
+    <main className="flex-1">
+      <div className="mx-auto w-full max-w-5xl px-6 py-7">
+        <header className="panel mb-7 flex items-center justify-between px-5 py-3.5">
+          <span className="brand">
+            <span className="brand-logo">▶</span>
+            Play<span className="brand-grad">Next</span>
+          </span>
+          <div className="flex items-center gap-3">
+            <span className="hidden text-sm text-muted-foreground sm:inline">{user.email}</span>
+            <form action={signOut}>
+              <button type="submit" className="btn btn-ghost btn-sm">
+                Sign out
+              </button>
+            </form>
+          </div>
+        </header>
 
-      {steam_linked && (
-        <p className="mb-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
-          Steam account linked.
-        </p>
-      )}
-      {steam_error && (
-        <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {steam_error}
-        </p>
-      )}
-      {sync_msg && (
-        <p className="mb-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
-          {sync_msg}
-        </p>
-      )}
-      {sync_error && (
-        <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          Sync failed: {sync_error}
-        </p>
-      )}
-      {recs_msg && (
-        <p className="mb-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
-          {recs_msg}
-        </p>
-      )}
-      {recs_error && (
-        <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          Recommendations failed: {recs_error}
-        </p>
-      )}
+        {steam_linked && (
+          <p className="mb-4 rounded-lg banner-ok px-3 py-2 text-sm">Steam account linked.</p>
+        )}
+        {steam_error && (
+          <p className="mb-4 rounded-lg banner-err px-3 py-2 text-sm">{steam_error}</p>
+        )}
+        {sync_msg && <p className="mb-4 rounded-lg banner-ok px-3 py-2 text-sm">{sync_msg}</p>}
+        {sync_error && (
+          <p className="mb-4 rounded-lg banner-err px-3 py-2 text-sm">Sync failed: {sync_error}</p>
+        )}
+        {recs_msg && <p className="mb-4 rounded-lg banner-ok px-3 py-2 text-sm">{recs_msg}</p>}
+        {recs_error && (
+          <p className="mb-4 rounded-lg banner-err px-3 py-2 text-sm">
+            Recommendations failed: {recs_error}
+          </p>
+        )}
 
       {/* HERO: the games come first. Controls live in a collapsed "Adjust" panel
           so they don't push the recommendations below the fold. */}
-      <section className="mb-10">
-        <div className="mb-4 flex items-baseline justify-between gap-4">
-          <h2 className="text-lg font-semibold">Recommended for you</h2>
+      <section className="mb-12">
+        <div className="mb-5 flex items-baseline justify-between gap-4">
+          <h2 className="text-2xl font-bold tracking-tight">Recommended for you</h2>
           {latestRec && (
-            <p className="shrink-0 text-xs text-gray-400">
+            <p className="shrink-0 text-xs text-faint">
               Last run {formatSyncedAt(latestRec.created_at)}
             </p>
           )}
@@ -225,18 +212,19 @@ export default async function DashboardPage({
 
         <>
             <details
-              className="mb-6 rounded-lg border border-gray-200"
+              className="panel mb-7 overflow-hidden"
               {...(latestRec ? {} : { open: true })}
             >
-              <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-gray-700">
-                Adjust recommendations
+              <summary className="flex cursor-pointer select-none items-center justify-between px-5 py-4 text-sm font-semibold">
+                <span>Adjust recommendations</span>
+                <span className="text-faint">▾</span>
               </summary>
               <form
                 action={updateRecommendations}
-                className="space-y-5 border-t border-gray-100 p-4"
+                className="space-y-6 border-t border-border p-5"
               >
                 {(gameCount ?? 0) === 0 && (
-                  <p className="rounded-md border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-500">
+                  <p className="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
                     No Steam library linked — pick a few games you like below to get
                     recommendations (or link Steam under your account).
                   </p>
@@ -248,8 +236,8 @@ export default async function DashboardPage({
                 {/* How you play — the only hard filter */}
                 <div className="space-y-3">
                   <div>
-                    <p className="text-sm font-medium text-gray-700">How you want to play</p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-sm font-semibold">How you want to play</p>
+                    <p className="text-xs text-faint">
                       The one hard filter — results are limited to games that fit.
                     </p>
                   </div>
@@ -268,10 +256,10 @@ export default async function DashboardPage({
                 </div>
 
                 {/* Lean toward — soft preferences */}
-                <div className="space-y-3 border-t border-gray-100 pt-4">
+                <div className="space-y-4 border-t border-border pt-5">
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Lean toward</p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-sm font-semibold">Lean toward</p>
+                    <p className="text-xs text-faint">
                       Soft preferences — nudge ranking (raise the &quot;Preference&quot;
                       score), they don&apos;t exclude anything.
                     </p>
@@ -318,15 +306,15 @@ export default async function DashboardPage({
                 </div>
 
                 {/* Advanced — signal weights (power-user knobs) */}
-                <details className="border-t border-gray-100 pt-4">
-                  <summary className="cursor-pointer select-none text-sm font-medium text-gray-700">
+                <details className="border-t border-border pt-5">
+                  <summary className="cursor-pointer select-none text-sm font-semibold">
                     Advanced — signal weights
                   </summary>
-                  <p className="mt-1 text-xs text-gray-400">Each 0–1. Higher = counts more.</p>
+                  <p className="mt-1 text-xs text-faint">Each 0–1. Higher = counts more.</p>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     {WEIGHT_FIELDS.map((f) => (
-                      <label key={f.key} className="block space-y-1">
-                        <span className="text-xs text-gray-500">{f.label}</span>
+                      <label key={f.key} className="block space-y-1.5">
+                        <span className="text-xs text-muted-foreground">{f.label}</span>
                         <input
                           type="number"
                           name={`w_${f.key}`}
@@ -334,117 +322,114 @@ export default async function DashboardPage({
                           max={1}
                           step={0.05}
                           defaultValue={savedWeights[f.key]}
-                          className="block w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                          className="field"
                         />
                       </label>
                     ))}
                   </div>
                 </details>
 
-                <button
-                  type="submit"
-                  className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-                >
+                <button type="submit" className="btn btn-primary">
                   Update recommendations
                 </button>
               </form>
             </details>
 
             {recItems.length > 0 ? (
-              <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {recItems.map((item) => (
                   <RecCard key={item.appId} item={item} recId={latestRec!.id} />
                 ))}
               </ul>
             ) : (
-              <p className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
-                No recommendations yet — open <span className="font-medium">Adjust
-                recommendations</span>, pick games or set preferences, and hit Update.
+              <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                No recommendations yet — open{" "}
+                <span className="font-semibold text-foreground">Adjust recommendations</span>,
+                pick games or set preferences, and hit Update.
               </p>
             )}
           </>
       </section>
 
       {/* Setup / status — secondary, below the games. */}
-      <section className="grid gap-4 sm:grid-cols-2">
-        <DashboardCard title="Steam account" hint="Link your Steam account (Phase 2)">
-          {steam ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                {steam.avatar_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={steam.avatar_url}
-                    alt=""
-                    className="h-10 w-10 rounded"
-                    width={40}
-                    height={40}
-                  />
-                )}
-                <div>
-                  <p className="font-medium text-gray-800">
-                    {steam.persona_name ?? steam.steam_id}
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {steam.profile_public ? "Public profile" : "Private profile"}
-                  </p>
+      <section>
+        <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-faint">Setup</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <DashboardCard title="Steam account" hint="Link your Steam account">
+            {steam ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  {steam.avatar_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={steam.avatar_url}
+                      alt=""
+                      className="h-10 w-10 rounded-lg"
+                      width={40}
+                      height={40}
+                    />
+                  )}
+                  <div>
+                    <p className="font-semibold text-foreground">
+                      {steam.persona_name ?? steam.steam_id}
+                    </p>
+                    <p className="text-xs text-faint">
+                      {steam.profile_public ? "Public profile" : "Private profile"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <form action={syncSteamLibrary}>
+                    <button type="submit" className="btn btn-primary btn-sm">
+                      {steam.last_synced_at ? "Re-sync library" : "Sync library"}
+                    </button>
+                  </form>
+                  <a
+                    href="/api/steam/link"
+                    className="text-xs text-faint underline hover:text-brand"
+                  >
+                    Change account
+                  </a>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <form action={syncSteamLibrary}>
-                  <button
-                    type="submit"
-                    className="rounded-md bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-700"
-                  >
-                    {steam.last_synced_at ? "Re-sync library" : "Sync library"}
-                  </button>
-                </form>
-                <a
-                  href="/api/steam/link"
-                  className="text-xs text-gray-400 underline hover:text-gray-600"
-                >
-                  Change account
-                </a>
+            ) : (
+              <a href="/api/steam/link" className="btn btn-primary btn-sm">
+                Link Steam account
+              </a>
+            )}
+          </DashboardCard>
+          <DashboardCard title="Your library" hint="Owned games & playtime">
+            {!steam ? (
+              "Link Steam to import."
+            ) : !steam.last_synced_at ? (
+              'Click "Sync library" to import your games.'
+            ) : (
+              <div className="space-y-3">
+                <p className="text-foreground">
+                  <span className="text-lg font-bold text-brand">{gameCount ?? 0}</span> games
+                  imported
+                </p>
+                {topGames.length > 0 && (
+                  <ul className="space-y-1.5">
+                    {topGames.map((g) => (
+                      <li key={g.appId} className="flex items-center justify-between gap-2">
+                        <span className="truncate">{g.name}</span>
+                        <span className="shrink-0 text-xs text-faint">
+                          {formatPlaytime(g.playtimeForever)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <p className="text-xs text-faint">
+                  Last synced {formatSyncedAt(steam.last_synced_at)}
+                </p>
               </div>
-            </div>
-          ) : (
-            <a
-              href="/api/steam/link"
-              className="inline-block rounded-md bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-700"
-            >
-              Link Steam account
-            </a>
-          )}
-        </DashboardCard>
-        <DashboardCard title="Your library" hint="Owned games & playtime (Phase 2)">
-          {!steam ? (
-            "Link Steam to import."
-          ) : !steam.last_synced_at ? (
-            'Click "Sync library" to import your games.'
-          ) : (
-            <div className="space-y-3">
-              <p className="text-gray-800">
-                <span className="font-medium">{gameCount ?? 0}</span> games imported
-              </p>
-              {topGames.length > 0 && (
-                <ul className="space-y-1">
-                  {topGames.map((g) => (
-                    <li key={g.appId} className="flex items-center justify-between gap-2">
-                      <span className="truncate">{g.name}</span>
-                      <span className="shrink-0 text-xs text-gray-400">
-                        {formatPlaytime(g.playtimeForever)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <p className="text-xs text-gray-400">
-                Last synced {formatSyncedAt(steam.last_synced_at)}
-              </p>
-            </div>
-          )}
-        </DashboardCard>
+            )}
+          </DashboardCard>
+        </div>
       </section>
+      </div>
     </main>
   );
 }
@@ -479,11 +464,9 @@ function Chip({
         name={name}
         value={value}
         defaultChecked={defaultChecked}
-        className="peer sr-only"
+        className="pn-check sr-only"
       />
-      <span className="inline-block rounded-full border border-gray-300 bg-white px-3 py-1 text-sm text-gray-600 transition-colors hover:border-gray-400 peer-checked:border-gray-900 peer-checked:bg-gray-900 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-gray-400">
-        {label}
-      </span>
+      <span className="chip">{label}</span>
     </label>
   );
 }
@@ -491,18 +474,20 @@ function Chip({
 function ChipGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <span className="mb-1.5 block text-xs font-medium text-gray-500">{label}</span>
+      <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-faint">
+        {label}
+      </span>
       <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   );
 }
 
 const BREAKDOWN_PARTS: { key: keyof Breakdown; label: string; color: string }[] = [
-  { key: "content", label: "Content", color: "bg-indigo-500" },
-  { key: "preference", label: "Preference", color: "bg-emerald-500" },
-  { key: "popularity", label: "Popularity", color: "bg-amber-500" },
-  { key: "recency", label: "Recency", color: "bg-sky-500" },
-  { key: "collab", label: "Collab", color: "bg-rose-500" },
+  { key: "content", label: "Content", color: "bg-violet-500" },
+  { key: "preference", label: "Preference", color: "bg-emerald-400" },
+  { key: "popularity", label: "Popularity", color: "bg-amber-400" },
+  { key: "recency", label: "Recency", color: "bg-sky-400" },
+  { key: "collab", label: "Collab", color: "bg-rose-400" },
 ];
 
 function RecCard({
@@ -522,19 +507,27 @@ function RecCard({
 }) {
   const total = BREAKDOWN_PARTS.reduce((s, p) => s + Math.max(0, item.breakdown[p.key]), 0);
   return (
-    <li className="overflow-hidden rounded-lg border border-gray-200">
-      {item.headerImage && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={item.headerImage} alt="" className="h-28 w-full object-cover" />
-      )}
-      <div className="space-y-2 p-3">
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="truncate font-medium text-gray-800">
-            {item.rank}. {item.name}
-          </span>
-          <span className="shrink-0 text-xs text-gray-400">{item.score.toFixed(3)}</span>
-        </div>
-        <div className="flex h-2 overflow-hidden rounded bg-gray-100">
+    <li className="group overflow-hidden rounded-xl border border-border bg-card shadow-[var(--shadow-card)] transition-transform duration-200 hover:-translate-y-1">
+      <div className="relative h-28">
+        {item.headerImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={item.headerImage} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="h-full w-full bg-gradient-to-br from-violet-700/40 to-fuchsia-700/30" />
+        )}
+        <span className="absolute left-2.5 top-2.5 grid h-6 min-w-6 place-items-center rounded-md bg-black/55 px-1.5 text-xs font-bold text-white backdrop-blur-sm">
+          {item.rank}
+        </span>
+        <span className="absolute right-2.5 top-2.5 rounded-full bg-black/50 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">
+          {item.score.toFixed(3)}
+        </span>
+      </div>
+      <div className="space-y-2.5 p-3.5">
+        <h3 className="truncate font-semibold">{item.name}</h3>
+        <div
+          className="flex h-2 overflow-hidden rounded-full"
+          style={{ background: "var(--bar-track)" }}
+        >
           {total > 0 &&
             BREAKDOWN_PARTS.map((p) => {
               const v = Math.max(0, item.breakdown[p.key]);
@@ -549,7 +542,7 @@ function RecCard({
               );
             })}
         </div>
-        <ul className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-gray-400">
+        <ul className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
           {BREAKDOWN_PARTS.filter((p) => item.breakdown[p.key] > 0).map((p) => (
             <li key={p.key} className="flex items-center gap-1">
               <span className={`inline-block h-2 w-2 rounded-sm ${p.color}`} />
@@ -560,16 +553,17 @@ function RecCard({
 
         {/* AI explanation: show the saved blurb, or a button to generate it. */}
         {item.aiExplanation ? (
-          <p className="border-t border-gray-100 pt-2 text-xs leading-relaxed text-gray-600">
+          <p className="border-t border-border pt-2.5 text-xs leading-relaxed text-muted-foreground">
+            <span className="text-brand">✨ </span>
             {item.aiExplanation}
           </p>
         ) : (
-          <form action={explainRec} className="border-t border-gray-100 pt-2">
+          <form action={explainRec} className="border-t border-border pt-2.5">
             <input type="hidden" name="rec_id" value={recId} />
             <input type="hidden" name="app_id" value={item.appId} />
             <button
               type="submit"
-              className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+              className="text-xs font-semibold text-brand transition hover:brightness-110"
             >
               ✨ Why this match?
             </button>
@@ -600,10 +594,10 @@ function DashboardCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-gray-200 p-4">
-      <h2 className="font-medium">{title}</h2>
-      <p className="mt-1 text-xs text-gray-400">{hint}</p>
-      <div className="mt-3 text-sm text-gray-600">{children}</div>
+    <div className="panel p-5">
+      <h2 className="font-semibold">{title}</h2>
+      <p className="mt-1 text-xs text-faint">{hint}</p>
+      <div className="mt-4 text-sm text-muted-foreground">{children}</div>
     </div>
   );
 }

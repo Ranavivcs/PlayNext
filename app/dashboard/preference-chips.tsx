@@ -25,9 +25,9 @@ export function GenrePicker({ initialSelected }: { initialSelected: string[] }) 
 
   return (
     <div>
-      <div className="mb-1.5 flex items-baseline gap-2">
-        <span className="text-xs font-medium text-gray-500">Genres</span>
-        <span className={`text-xs ${atCap ? "font-medium text-gray-600" : "text-gray-400"}`}>
+      <div className="mb-2 flex items-baseline gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wider text-faint">Genres</span>
+        <span className={`text-xs ${atCap ? "font-medium text-brand" : "text-faint"}`}>
           pick up to {MAX_GENRE_PICKS} ({selected.size}/{MAX_GENRE_PICKS})
         </span>
       </div>
@@ -47,13 +47,7 @@ export function GenrePicker({ initialSelected }: { initialSelected: string[] }) 
                 className="sr-only"
               />
               <span
-                className={`inline-block rounded-full border px-3 py-1 text-sm transition-colors ${
-                  isSelected
-                    ? "border-gray-900 bg-gray-900 text-white"
-                    : disabled
-                      ? "border-gray-200 bg-white text-gray-300"
-                      : "border-gray-300 bg-white text-gray-600 hover:border-gray-400"
-                }`}
+                className={`chip ${isSelected ? "chip-on" : ""} ${disabled ? "chip-disabled" : ""}`}
               >
                 {g}
               </span>

@@ -56,14 +56,14 @@ export function SeedPicker() {
   const showDropdown = query.trim().length >= 2;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       <div className="flex items-baseline gap-2">
-        <span className="text-sm font-medium text-gray-700">Base it on games you like</span>
-        <span className="text-xs text-gray-400">
+        <span className="text-sm font-semibold">Base it on games you like</span>
+        <span className="text-xs text-faint">
           optional · up to {MAX_SEEDS} ({selected.length}/{MAX_SEEDS})
         </span>
       </div>
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-faint">
         Pick games and we&apos;ll recommend similar ones. When set, these replace your
         Steam library as the basis for this run.
       </p>
@@ -71,15 +71,12 @@ export function SeedPicker() {
       {selected.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {selected.map((g) => (
-            <span
-              key={g.appId}
-              className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 px-3 py-1 text-sm text-white"
-            >
+            <span key={g.appId} className="chip chip-on inline-flex items-center gap-1.5">
               {g.name}
               <button
                 type="button"
                 onClick={() => remove(g.appId)}
-                className="text-gray-300 hover:text-white"
+                className="opacity-70 hover:opacity-100"
                 aria-label={`Remove ${g.name}`}
               >
                 ×
@@ -97,13 +94,13 @@ export function SeedPicker() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search games…"
-            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className="field"
           />
           {showDropdown && (
-            <ul className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
-              {loading && <li className="px-3 py-2 text-sm text-gray-400">Searching…</li>}
+            <ul className="panel absolute z-10 mt-1.5 max-h-64 w-full overflow-auto p-1">
+              {loading && <li className="px-3 py-2 text-sm text-faint">Searching…</li>}
               {!loading && results.length === 0 && (
-                <li className="px-3 py-2 text-sm text-gray-400">No matches</li>
+                <li className="px-3 py-2 text-sm text-faint">No matches</li>
               )}
               {results.map((g) => {
                 const already = selected.some((s) => s.appId === g.appId);
@@ -113,14 +110,14 @@ export function SeedPicker() {
                       type="button"
                       onClick={() => add(g)}
                       disabled={already}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-gray-50 disabled:opacity-40"
+                      className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-accent disabled:opacity-40"
                     >
                       {g.headerImage && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={g.headerImage}
                           alt=""
-                          className="h-6 w-12 shrink-0 rounded object-cover"
+                          className="h-7 w-14 shrink-0 rounded object-cover"
                         />
                       )}
                       <span className="truncate">{g.name}</span>
@@ -134,7 +131,7 @@ export function SeedPicker() {
       )}
 
       {atCap && (
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-faint">
           Max {MAX_SEEDS} games — remove one to add another.
         </p>
       )}
