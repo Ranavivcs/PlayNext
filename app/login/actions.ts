@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getSiteUrl } from "@/lib/steam/openid";
+import { getOrigin } from "@/lib/origin";
 
 export async function login(formData: FormData) {
   const supabase = await createClient();
@@ -58,10 +58,12 @@ export async function requestPasswordReset(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
   if (email) {
     const supabase = await createClient();
-    // No query string on redirectTo — Supabase matches it against the allowlist
-    // exactly, and a `?next=` param makes it fall back to the Site URL (homepage).
+    // Origin from the live request (not NEXT_PUBLIC_SITE_URL) so the link points
+    // at whatever domain the user is actually on. No query string on redirectTo —
+    // Supabase matches it against the allowlist exactly, and a `?next=` param
+    // makes it fall back to the Site URL (homepage).
     await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${getSiteUrl()}/auth/callback`,
+      redirectTo: `${await getOrigin()}/auth/callback`,
     });
   }
   // Always report success — don't reveal whether an email is registered.
