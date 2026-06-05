@@ -10,10 +10,8 @@ import {
   GENRE_OPTIONS,
   VIBE_OPTIONS,
   DIFFICULTY_OPTIONS,
-  LENGTH_OPTIONS,
   VIBE_OPTION_SET,
   DIFFICULTY_VALUE_SET,
-  LENGTH_VALUE_SET,
 } from "./preferences-options";
 import { GenrePicker } from "./preference-chips";
 import { SeedPicker } from "./seed-picker";
@@ -118,7 +116,7 @@ export default async function DashboardPage({
   // is a community tag, so selections live in preferred_tags.
   const { data: prefsRow } = await supabase
     .from("user_preferences")
-    .select("preferred_tags, preferred_length, weights")
+    .select("preferred_tags, weights")
     .eq("user_id", user.id)
     .maybeSingle();
   const tagList = (prefsRow?.preferred_tags as string[]) ?? [];
@@ -126,8 +124,6 @@ export default async function DashboardPage({
   const savedGenres = tagList.filter((t) => (GENRE_OPTIONS as readonly string[]).includes(t));
   const savedVibe = tagList.find((t) => VIBE_OPTION_SET.has(t)) ?? "";
   const savedDifficulty = tagList.find((t) => DIFFICULTY_VALUE_SET.has(t)) ?? "";
-  const lengthRaw = (prefsRow?.preferred_length as string | null) ?? "";
-  const savedLength = LENGTH_VALUE_SET.has(lengthRaw) ? lengthRaw : "";
   const savedWeights: Weights = {
     ...DEFAULT_WEIGHTS,
     ...((prefsRow?.weights as Partial<Weights> | null) ?? {}),
@@ -330,25 +326,11 @@ export default async function DashboardPage({
                       />
                     ))}
                   </ChipGroup>
-                  <ChipGroup label="Game length">
-                    <Chip
-                      type="radio"
-                      name="length"
-                      value=""
-                      label="Any"
-                      defaultChecked={savedLength === ""}
-                    />
-                    {LENGTH_OPTIONS.map((l) => (
-                      <Chip
-                        key={l.value}
-                        type="radio"
-                        name="length"
-                        value={l.value}
-                        label={l.label}
-                        defaultChecked={savedLength === l.value}
-                      />
-                    ))}
-                  </ChipGroup>
+                  {/* "Game length" control is PARKED: SteamSpy's median playtime
+                      is dead (all zeros), so it has no data source yet. The
+                      column/engine/action plumbing stays; re-add this ChipGroup
+                      once a real source (HowLongToBeat / IGDB) feeds
+                      games.median_playtime. */}
                 </div>
 
                 {/* Advanced — signal weights (power-user knobs) */}
