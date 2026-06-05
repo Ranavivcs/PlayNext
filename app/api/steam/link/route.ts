@@ -1,18 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { buildSteamLoginUrl, getSiteUrl } from "@/lib/steam/openid";
+import { buildSteamLoginUrl } from "@/lib/steam/openid";
+import { getOrigin } from "@/lib/origin";
 
 // Starts the Steam OpenID flow. proxy.ts already requires auth for /api/steam/*,
 // so this user check is a defensive fallback.
 export async function GET(_request: NextRequest) {
+  const origin = await getOrigin();
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.redirect(`${getSiteUrl()}/login`);
+    return NextResponse.redirect(`${origin}/login`);
   }
 
-  return NextResponse.redirect(buildSteamLoginUrl());
+  return NextResponse.redirect(buildSteamLoginUrl(origin));
 }
