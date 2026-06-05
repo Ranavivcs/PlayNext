@@ -245,6 +245,28 @@ User asked to make the site cleaner/smoother/more inviting. Showed 3 themed mock
 - **VERIFIED:** `npx tsc --noEmit` clean; `npm run build` clean (all 10 routes). Live-screenshotted landing + login in the real Next app (neon hero, glowing logo, gradient text, branded auth card all render). **NOT yet verified:** logged-in dashboard click-through (needs a session) — same pattern as prior phases; the dashboard reuses the verified component classes and built clean.
 - Throwaway preview scaffolding (the 3-theme mockup HTML + a static server) was removed after the decision. A `playnext-dev` + `design-preview` config lives in the **workspace-root** `C:\The Final Project\.claude\launch.json` (outside the repo) for the Claude preview tool.
 
+## Deploy to Vercel + account management (2026-06-05)
+### Deployed to Vercel ✅ LIVE
+- Live at **https://play-next-five.vercel.app** (Hobby/free plan, `*.vercel.app` domain — no custom domain needed). Project `play-next` under `rans-projects1`. Auto-deploys on push to `main`.
+- **KEY FINDING — env vars need a redeploy:** first load 500'd because env vars were added *after* the initial deploy; Vercel only applies them on a NEW deploy. Fixed by setting all 6 (Supabase ×3, `STEAM_API_KEY`, `ANTHROPIC_API_KEY`, `NEXT_PUBLIC_SITE_URL=https://play-next-five.vercel.app`) for Production + redeploy. Landing then 200.
+- **Steam OpenID needs NO dashboard change** — OpenID 2.0 `identifier_select`; `return_to`/realm derive from `NEXT_PUBLIC_SITE_URL`. So that env var (exact prod origin, no trailing slash) is the only Steam-related step.
+- Prod + dev share the SAME Supabase project (`omrxytvshnuugnhusneh`).
+
+### Steam-library uniqueness — ALREADY enforced (no change)
+- `steam_accounts.steam_id` is `not null unique` (migration 0001); the callback already maps the `23505` violation to "This Steam account is already linked to another user." So one Steam library can't be linked to two PlayNext accounts.
+
+### Account recovery + deletion + display-name ✅ BUILT (tsc + `next build` clean)
+User flagged the "stuck account" gap (link Steam → forget account → library locked by the unique constraint). Built (DECIDED with user — "both + display-name fix"):
+- **Forgot-password flow.** `requestPasswordReset` / `updatePassword` actions (`app/login/actions.ts`); `app/forgot-password/page.tsx` (request, always shows neutral "sent" to avoid email enumeration); `app/auth/callback/route.ts` (GET → `exchangeCodeForSession(code)` → forward to `next`, same-site only); `app/reset-password/page.tsx` (set new password, guarded by the recovery session). "Forgot password?" link added to `/login`. `/forgot-password` added to `PUBLIC_PATHS` (`/auth` already public).
+- **Delete account.** `deleteAccount` action (`app/dashboard/actions.ts`) — requires a `confirm` checkbox, uses the **admin** client `auth.admin.deleteUser(user.id)`; FK `on delete cascade` wipes steam_accounts/user_games/prefs/recs AND frees the `steam_id` for re-linking. Renders in a collapsed "Danger zone" on the dashboard; success → `/?deleted=1` banner.
+- **Display name in header.** Signup already saved `user_metadata.display_name` but the dashboard showed raw email; header now shows display name + email subtitle. New `account_msg`/`account_error` dashboard banners.
+- **⚠️ NEEDS A SUPABASE DASHBOARD STEP for password reset to work:** add the prod + local URLs to Supabase → Auth → URL Configuration → **Redirect URLs**: `https://play-next-five.vercel.app/auth/callback` and `http://localhost:3000/auth/callback` (and Site URL = prod). Without it Supabase rejects the `redirectTo`.
+- **⚠️ Email caveat:** reset emails use Supabase's built-in sender (rate-limited — same reason email *confirmation* is off). Fine for demo; custom SMTP is the production fix later.
+- **NOT yet verified live:** the reset email round-trip + delete-account click-through (need the Supabase redirect-URL step first).
+
+### Wrong-email mystery (open) — likely a stale session, not a bug
+- User signed up `ranaviv.cs@gmail.com` (verified in DB: created + signed in today, display_name "Ran-test") but the dashboard header showed `ranaviv1991@gmail.com` (old test acct, **last sign-in May 29 — never on prod**). Strong signal it's a leftover/stale session in that browser, not a crossed-wires bug. Repro pending: sign out → sign in as ranaviv.cs → hard refresh. If it STILL shows the wrong email → investigate page caching.
+
 ## ▶ RESUME HERE (next session)
 **Done up to now:** Phases 1–2; **Phase 3 FULLY DONE** (CORE; Step C **2533-game** catalog; Step D bridge + games-first dashboard + hard filters; Step E soft-pref UX = rich tag-genres, 5-pick cap, single-select vibe/difficulty); **Step F seed-based recs** (no-Steam "pick games" path, live-verified); **Phase 4 AI explanations DONE & live-verified** (per-card "Why this match?", Haiku); **README refreshed + full visual redesign to a dark+neon theme across landing/auth/dashboard** (built clean; dashboard awaits a logged-in click-through). App renamed **GameMatch AI → PlayNext**, pushed to **github.com/Ranavivcs/PlayNext** (private). Pure `lib/reco/` still untouched. RAWG DEFERRED (Steam-only v1).
 

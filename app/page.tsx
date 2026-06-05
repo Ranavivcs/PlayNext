@@ -1,14 +1,26 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ deleted?: string }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const { deleted } = await searchParams;
 
   return (
     <main className="flex flex-1 flex-col">
+      {deleted && (
+        <div className="mx-auto mt-4 w-full max-w-5xl px-6">
+          <p className="rounded-lg banner-ok px-3 py-2 text-sm">
+            Your account has been deleted.
+          </p>
+        </div>
+      )}
       {/* top bar */}
       <nav className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-5">
         <span className="brand">

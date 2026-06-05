@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getSiteUrl } from "@/lib/steam/openid";
 
 export async function login(formData: FormData) {
   const supabase = await createClient();
@@ -49,4 +50,38 @@ export async function signOut() {
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
   redirect("/login");
+}
+
+// Send a password-reset email. The link lands on /auth/callback, which exchanges
+// the code for a (recovery) session and forwards to /reset-password.
+export async function requestPasswordReset(formData: FormData) {
+  const email = String(formData.get("email") ?? "").trim();
+  if (email) {
+    const supabase = await createClient();
+    await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${getSiteUrl()}/auth/callback?next=/reset-password`,
+    });
+  }
+  // Always report success — don't reveal whether an email is registered.
+  redirect("/forgot-password?sent=1");
+}
+
+// Set a new password. Requires the recovery session created by /auth/callback.
+export async function updatePassword(formData: FormData) {
+  const password = String(formData.get("password") ?? "");
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect(`/login?error=${encodeURIComponent("Reset link expired. Request a new one.")}`);
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    redirect(`/reset-password?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/", "layout");
+  redirect("/dashboard?account_msg=Password+updated.");
 }

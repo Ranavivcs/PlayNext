@@ -34,9 +34,14 @@ export default async function LoginPage({
               <input id="email" name="email" type="email" required className="field" />
             </div>
             <div className="space-y-1.5">
-              <label htmlFor="password" className="text-sm font-medium">
-                Password
-              </label>
+              <div className="flex items-baseline justify-between">
+                <label htmlFor="password" className="text-sm font-medium">
+                  Password
+                </label>
+                <Link href="/forgot-password" className="text-xs text-brand hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
               <input id="password" name="password" type="password" required className="field" />
             </div>
             <button type="submit" className="btn btn-primary w-full">

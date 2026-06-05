@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "../login/actions";
-import { syncSteamLibrary, updateRecommendations, explainRec } from "./actions";
+import { syncSteamLibrary, updateRecommendations, explainRec, deleteAccount } from "./actions";
 import type { HardFilters } from "@/lib/reco-data/filters";
 import { DEFAULT_WEIGHTS } from "@/lib/reco-data/user";
 import type { Weights } from "@/lib/reco/types";
@@ -34,6 +34,8 @@ export default async function DashboardPage({
     sync_error?: string;
     recs_msg?: string;
     recs_error?: string;
+    account_msg?: string;
+    account_error?: string;
   }>;
 }) {
   const supabase = await createClient();
@@ -46,8 +48,20 @@ export default async function DashboardPage({
     redirect("/login");
   }
 
-  const { steam_linked, steam_error, sync_msg, sync_error, recs_msg, recs_error } =
-    await searchParams;
+  const displayName =
+    ((user.user_metadata as { display_name?: string } | null)?.display_name ?? "").trim() ||
+    user.email;
+
+  const {
+    steam_linked,
+    steam_error,
+    sync_msg,
+    sync_error,
+    recs_msg,
+    recs_error,
+    account_msg,
+    account_error,
+  } = await searchParams;
 
   const { data: steam } = await supabase
     .from("steam_accounts")
@@ -172,7 +186,10 @@ export default async function DashboardPage({
             Play<span className="brand-grad">Next</span>
           </span>
           <div className="flex items-center gap-3">
-            <span className="hidden text-sm text-muted-foreground sm:inline">{user.email}</span>
+            <div className="hidden text-right sm:block">
+              <p className="text-sm font-medium leading-tight">{displayName}</p>
+              <p className="text-xs leading-tight text-faint">{user.email}</p>
+            </div>
             <form action={signOut}>
               <button type="submit" className="btn btn-ghost btn-sm">
                 Sign out
@@ -196,6 +213,12 @@ export default async function DashboardPage({
           <p className="mb-4 rounded-lg banner-err px-3 py-2 text-sm">
             Recommendations failed: {recs_error}
           </p>
+        )}
+        {account_msg && (
+          <p className="mb-4 rounded-lg banner-ok px-3 py-2 text-sm">{account_msg}</p>
+        )}
+        {account_error && (
+          <p className="mb-4 rounded-lg banner-err px-3 py-2 text-sm">{account_error}</p>
         )}
 
       {/* HERO: the games come first. Controls live in a collapsed "Adjust" panel
@@ -428,6 +451,37 @@ export default async function DashboardPage({
             )}
           </DashboardCard>
         </div>
+      </section>
+
+      {/* Danger zone — account deletion (collapsed by default). */}
+      <section className="mt-10">
+        <details className="rounded-xl border border-destructive/40 bg-destructive/5">
+          <summary className="cursor-pointer select-none px-5 py-3.5 text-sm font-semibold text-destructive">
+            Danger zone
+          </summary>
+          <div className="space-y-4 border-t border-destructive/30 p-5">
+            <div>
+              <p className="text-sm font-medium">Delete account</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Permanently deletes your account, your synced library, preferences, and
+                recommendations. This also unlinks your Steam account so it can be linked to a
+                new account. This can&apos;t be undone.
+              </p>
+            </div>
+            <form action={deleteAccount} className="space-y-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name="confirm" className="h-4 w-4 accent-[var(--brand)]" />
+                I understand this is permanent.
+              </label>
+              <button
+                type="submit"
+                className="rounded-lg border border-destructive/60 bg-destructive/10 px-4 py-2 text-sm font-semibold text-destructive transition hover:bg-destructive/20"
+              >
+                Delete my account
+              </button>
+            </form>
+          </div>
+        </details>
       </section>
       </div>
     </main>

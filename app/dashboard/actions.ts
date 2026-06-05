@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { ingestLibrary } from "@/lib/steam/ingest";
 import { generateRecommendations } from "@/lib/reco-data/run";
 import { explainRecommendation } from "@/lib/ai/explain";
@@ -285,4 +286,40 @@ export async function explainRec(formData: FormData) {
 
   revalidatePath("/dashboard");
   redirect("/dashboard");
+}
+
+/**
+ * Permanently delete the logged-in user's account. Requires an explicit confirm
+ * checkbox (defense against accidental clicks). Uses the service-role admin
+ * client to remove the auth user; FK `on delete cascade` wipes steam_accounts,
+ * user_games, preferences, recommendations, etc. — which also frees that Steam
+ * library's `steam_id` so it can be linked to a fresh account later.
+ */
+export async function deleteAccount(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  if (formData.get("confirm") !== "on") {
+    redirect(
+      `/dashboard?account_error=${encodeURIComponent("Tick the confirmation box to delete your account.")}`,
+    );
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.deleteUser(user.id);
+  if (error) {
+    redirect(`/dashboard?account_error=${encodeURIComponent(error.message)}`);
+  }
+
+  // Clear the now-orphaned session cookies, then land on the homepage.
+  try {
+    await supabase.auth.signOut();
+  } catch {
+    // user is already gone; cookies are cleared regardless
+  }
+  revalidatePath("/", "layout");
+  redirect("/?deleted=1");
 }
