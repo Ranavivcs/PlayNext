@@ -49,6 +49,16 @@ export const DIFFICULTY_OPTIONS: { value: string; label: string }[] = [
   { value: "Relaxing", label: "Relaxing" },
 ];
 
+// Game length (time investment). Single-select; stored in its OWN column
+// (user_preferences.preferred_length), NOT preferred_tags — it's a numeric
+// bucket from SteamSpy median playtime, not a community tag.
+export const LENGTH_OPTIONS: { value: string; label: string }[] = [
+  { value: "short", label: "Short (≤5h)" },
+  { value: "medium", label: "Medium (5–20h)" },
+  { value: "long", label: "Long (20h+)" },
+];
+export const LENGTH_VALUE_SET: ReadonlySet<string> = new Set(LENGTH_OPTIONS.map((o) => o.value));
+
 // Per-field validation sets (server side).
 export const GENRE_OPTION_SET: ReadonlySet<string> = new Set(GENRE_OPTIONS);
 export const VIBE_OPTION_SET: ReadonlySet<string> = new Set(VIBE_OPTIONS);

@@ -14,6 +14,7 @@ import {
   GENRE_OPTION_SET,
   VIBE_OPTION_SET,
   DIFFICULTY_VALUE_SET,
+  LENGTH_VALUE_SET,
   MAX_GENRE_PICKS,
 } from "./preferences-options";
 
@@ -121,6 +122,11 @@ export async function updateRecommendations(formData: FormData) {
     typeof diffRaw === "string" && DIFFICULTY_VALUE_SET.has(diffRaw) ? [diffRaw] : [];
   const preferred_tags = [...genrePicks, ...vibe, ...difficulty];
 
+  // Game length lives in its own column (numeric bucket, not a tag). "" = Any.
+  const lengthRaw = formData.get("length");
+  const preferred_length =
+    typeof lengthRaw === "string" && LENGTH_VALUE_SET.has(lengthRaw) ? lengthRaw : null;
+
   const { data: existing } = await supabase
     .from("user_preferences")
     .select("weights")
@@ -133,6 +139,7 @@ export async function updateRecommendations(formData: FormData) {
       user_id: user.id,
       preferred_genres,
       preferred_tags,
+      preferred_length,
       weights,
       updated_at: new Date().toISOString(),
     },

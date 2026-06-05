@@ -107,6 +107,7 @@ async function enrichOne(admin: Admin, appId: number): Promise<EnrichStatus> {
     metacritic: details.metacritic,
     total_reviews: spy?.totalReviews ?? 0,
     positive_ratio: spy?.positiveRatio ?? 0,
+    median_playtime: spy?.medianForever ?? null,
     platform_windows: details.platforms.windows,
     platform_mac: details.platforms.mac,
     platform_linux: details.platforms.linux,

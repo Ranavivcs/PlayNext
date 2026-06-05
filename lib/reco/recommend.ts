@@ -57,7 +57,12 @@ export function recommend(input: RecommendInput): ScoredGame[] {
 
     const vector = gameVector(game, idf);
     const contentRaw = hasTaste ? cosine(taste, vector) : 0;
-    const prefRaw = preferenceScore(game, input.preferredGenres, input.preferredTags);
+    const prefRaw = preferenceScore(
+      game,
+      input.preferredGenres,
+      input.preferredTags,
+      input.preferredLength,
+    );
     const popRaw = popularityScore(game.totalReviews, game.positiveRatio, maxLogReviews);
     const recRaw = recencyScore(game.releaseDate, now);
 

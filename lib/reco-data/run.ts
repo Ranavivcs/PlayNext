@@ -104,6 +104,7 @@ export async function generateRecommendations(opts: RunOptions): Promise<RunResu
     ownedFeatures,
     preferredGenres: user.preferredGenres,
     preferredTags: user.preferredTags,
+    preferredLength: user.preferredLength,
     dismissedAppIds,
     weights: user.weights,
     topK,
@@ -119,6 +120,7 @@ export async function generateRecommendations(opts: RunOptions): Promise<RunResu
       {
         weights: user.weights,
         filters,
+        preferredLength: user.preferredLength,
         topK: topK ?? null,
         mmrLambda: mmrLambda ?? null,
         seedAppIds: useSeeds ? seedAppIds : null,
