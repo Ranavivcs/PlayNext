@@ -8,18 +8,15 @@ const STEAM_OPENID_URL = "https://steamcommunity.com/openid/login";
 const OPENID_NS = "http://specs.openid.net/auth/2.0";
 const IDENTIFIER_SELECT = "http://specs.openid.net/auth/2.0/identifier_select";
 
-/** Site origin without a trailing slash. Used as the OpenID realm + return base. */
-export function getSiteUrl(): string {
-  const url = process.env.NEXT_PUBLIC_SITE_URL;
-  if (!url) throw new Error("NEXT_PUBLIC_SITE_URL is not set");
-  return url.replace(/\/+$/, "");
-}
-
 export const STEAM_RETURN_PATH = "/api/steam/callback";
 
-/** URL to send the browser to so the user can authenticate with Steam. */
-export function buildSteamLoginUrl(): string {
-  const site = getSiteUrl();
+/**
+ * URL to send the browser to so the user can authenticate with Steam.
+ * `origin` is the live request origin (e.g. https://play-next-five.vercel.app),
+ * passed in by the route so we never depend on a build-time env var.
+ */
+export function buildSteamLoginUrl(origin: string): string {
+  const site = origin.replace(/\/+$/, "");
   const params = new URLSearchParams({
     "openid.ns": OPENID_NS,
     "openid.mode": "checkid_setup",
@@ -38,11 +35,12 @@ export function buildSteamLoginUrl(): string {
  */
 export async function verifySteamAssertion(
   query: URLSearchParams,
+  origin: string,
 ): Promise<string | null> {
   if (query.get("openid.mode") !== "id_res") return null;
 
   // Defense-in-depth: the assertion must be for our own return_to.
-  const site = getSiteUrl();
+  const site = origin.replace(/\/+$/, "");
   const returnTo = query.get("openid.return_to") ?? "";
   if (!returnTo.startsWith(`${site}${STEAM_RETURN_PATH}`)) return null;
 

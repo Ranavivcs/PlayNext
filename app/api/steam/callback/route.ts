@@ -1,12 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getSiteUrl, verifySteamAssertion } from "@/lib/steam/openid";
+import { verifySteamAssertion } from "@/lib/steam/openid";
 import { getPlayerSummary } from "@/lib/steam/api";
+import { getOrigin } from "@/lib/origin";
 
 // Steam redirects the browser here after the user authenticates. We verify the
 // signed assertion, then upsert the steamid onto the logged-in user's account.
 export async function GET(request: NextRequest) {
-  const site = getSiteUrl();
+  const site = await getOrigin();
   const supabase = await createClient();
   const {
     data: { user },
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${site}/login`);
   }
 
-  const steamId = await verifySteamAssertion(request.nextUrl.searchParams);
+  const steamId = await verifySteamAssertion(request.nextUrl.searchParams, site);
   if (!steamId) {
     const msg = encodeURIComponent("Steam verification failed. Please try again.");
     return NextResponse.redirect(`${site}/dashboard?steam_error=${msg}`);
