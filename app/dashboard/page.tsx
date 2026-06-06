@@ -6,7 +6,8 @@ import type { HardFilters } from "@/lib/reco-data/filters";
 import { DEFAULT_WEIGHTS } from "@/lib/reco-data/user";
 import type { Weights } from "@/lib/reco/types";
 import {
-  WEIGHT_FIELDS,
+  WEIGHT_PRESETS,
+  presetFromWeights,
   GENRE_OPTIONS,
   VIBE_OPTIONS,
   DIFFICULTY_OPTIONS,
@@ -129,6 +130,7 @@ export default async function DashboardPage({
     ...DEFAULT_WEIGHTS,
     ...((prefsRow?.weights as Partial<Weights> | null) ?? {}),
   };
+  const savedPreset = presetFromWeights(savedWeights);
 
   let recItems: {
     appId: number;
@@ -335,29 +337,30 @@ export default async function DashboardPage({
                       games.median_playtime. */}
                 </div>
 
-                {/* Advanced — signal weights (power-user knobs) */}
-                <details className="border-t border-border pt-5">
-                  <summary className="cursor-pointer select-none text-sm font-semibold">
-                    Advanced — signal weights
-                  </summary>
-                  <p className="mt-1 text-xs text-faint">Each 0–1. Higher = counts more.</p>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    {WEIGHT_FIELDS.map((f) => (
-                      <label key={f.key} className="block space-y-1.5">
-                        <span className="text-xs text-muted-foreground">{f.label}</span>
+                {/* Recommendation style — friendly presets instead of raw weights */}
+                <div className="space-y-3 border-t border-border pt-5">
+                  <div>
+                    <p className="text-sm font-semibold">Recommendation style</p>
+                    <p className="text-xs text-faint">
+                      {WEIGHT_PRESETS.find((p) => p.value === savedPreset)?.description ??
+                        "Choose how the ranking is balanced."}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {WEIGHT_PRESETS.map((p) => (
+                      <label key={p.value} className="cursor-pointer" title={p.description}>
                         <input
-                          type="number"
-                          name={`w_${f.key}`}
-                          min={0}
-                          max={1}
-                          step={0.05}
-                          defaultValue={savedWeights[f.key]}
-                          className="field"
+                          type="radio"
+                          name="preset"
+                          value={p.value}
+                          defaultChecked={savedPreset === p.value}
+                          className="pn-check sr-only"
                         />
+                        <span className="chip">{p.label}</span>
                       </label>
                     ))}
                   </div>
-                </details>
+                </div>
 
                 <button type="submit" className="btn btn-primary">
                   Update recommendations
@@ -543,13 +546,45 @@ function ChipGroup({ label, children }: { label: string; children: React.ReactNo
   );
 }
 
-const BREAKDOWN_PARTS: { key: keyof Breakdown; label: string; color: string }[] = [
-  { key: "content", label: "Content", color: "bg-violet-500" },
-  { key: "graph", label: "Graph", color: "bg-fuchsia-400" },
-  { key: "preference", label: "Preference", color: "bg-emerald-400" },
-  { key: "popularity", label: "Popularity", color: "bg-amber-400" },
-  { key: "recency", label: "Recency", color: "bg-sky-400" },
-  { key: "collab", label: "Collab", color: "bg-rose-400" },
+// Plain-English labels + tooltips — the internal term names (content, graph…)
+// mean nothing to a user, so the card shows friendly text and explains on hover.
+const BREAKDOWN_PARTS: { key: keyof Breakdown; label: string; tip: string; color: string }[] = [
+  {
+    key: "content",
+    label: "Like your games",
+    tip: "How closely this matches the genres & tags of the games you play most.",
+    color: "bg-violet-500",
+  },
+  {
+    key: "graph",
+    label: "Linked to your favorites",
+    tip: "How closely it's connected to your favorites through a network of similar games.",
+    color: "bg-fuchsia-400",
+  },
+  {
+    key: "preference",
+    label: "Your genres",
+    tip: "How well it matches the genres, vibe and difficulty you chose.",
+    color: "bg-emerald-400",
+  },
+  {
+    key: "popularity",
+    label: "Well-reviewed",
+    tip: "How well-reviewed it is (weighted by review quality, not just count).",
+    color: "bg-amber-400",
+  },
+  {
+    key: "recency",
+    label: "Newer",
+    tip: "How recently the game was released.",
+    color: "bg-sky-400",
+  },
+  {
+    key: "collab",
+    label: "Similar players",
+    tip: "Recommendations from players with similar taste (coming soon).",
+    color: "bg-rose-400",
+  },
 ];
 
 function RecCard({
@@ -599,16 +634,20 @@ function RecCard({
                   key={p.key}
                   className={p.color}
                   style={{ width: `${(v / total) * 100}%` }}
-                  title={`${p.label}: ${item.breakdown[p.key].toFixed(3)}`}
+                  title={`${p.label}: ${p.tip}`}
                 />
               );
             })}
         </div>
         <ul className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
           {BREAKDOWN_PARTS.filter((p) => item.breakdown[p.key] > 0).map((p) => (
-            <li key={p.key} className="flex items-center gap-1">
+            <li
+              key={p.key}
+              className="flex cursor-help items-center gap-1"
+              title={`${p.tip} (${item.breakdown[p.key].toFixed(2)})`}
+            >
               <span className={`inline-block h-2 w-2 rounded-sm ${p.color}`} />
-              {p.label} {item.breakdown[p.key].toFixed(3)}
+              {p.label}
             </li>
           ))}
         </ul>

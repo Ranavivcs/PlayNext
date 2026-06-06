@@ -16,6 +16,10 @@ import {
   DIFFICULTY_VALUE_SET,
   LENGTH_VALUE_SET,
   MAX_GENRE_PICKS,
+  WEIGHT_PRESET_MAP,
+  PRESET_VALUE_SET,
+  DEFAULT_PRESET,
+  type PresetKey,
 } from "./preferences-options";
 
 const VALID_MODES = ["single-player", "multiplayer", "co-op"] as const;
@@ -68,26 +72,13 @@ export async function syncSteamLibrary() {
   redirect(`/dashboard?sync_msg=${encodeURIComponent(`Imported ${result.count} games.`)}`);
 }
 
-/** Clamp a form value to a weight in [0, 1]; fall back to a default if absent/NaN. */
-function parseWeight(raw: FormDataEntryValue | null, fallback: number): number {
-  if (typeof raw !== "string" || raw.trim() === "") return fallback;
-  const n = Number(raw);
-  if (Number.isNaN(n)) return fallback;
-  return n < 0 ? 0 : n > 1 ? 1 : n;
-}
-
-/** Read the editable weights from the form, preserving the hidden collab value. */
-function parseWeights(formData: FormData, current: Partial<Weights> | null): Weights {
-  const collab =
-    typeof current?.collab === "number" ? current.collab : DEFAULT_WEIGHTS.collab;
-  return {
-    content: parseWeight(formData.get("w_content"), DEFAULT_WEIGHTS.content),
-    graph: parseWeight(formData.get("w_graph"), DEFAULT_WEIGHTS.graph ?? 0),
-    preference: parseWeight(formData.get("w_preference"), DEFAULT_WEIGHTS.preference),
-    popularity: parseWeight(formData.get("w_popularity"), DEFAULT_WEIGHTS.popularity),
-    recency: parseWeight(formData.get("w_recency"), DEFAULT_WEIGHTS.recency),
-    collab,
-  };
+/** Turn the chosen "style" preset into a full weight set, preserving collab. */
+function weightsFromPreset(formData: FormData, current: Partial<Weights> | null): Weights {
+  const raw = formData.get("preset");
+  const key: PresetKey =
+    typeof raw === "string" && PRESET_VALUE_SET.has(raw) ? (raw as PresetKey) : DEFAULT_PRESET;
+  const collab = typeof current?.collab === "number" ? current.collab : DEFAULT_WEIGHTS.collab;
+  return { ...WEIGHT_PRESET_MAP[key], collab };
 }
 
 /**
@@ -133,7 +124,7 @@ export async function updateRecommendations(formData: FormData) {
     .select("weights")
     .eq("user_id", user.id)
     .maybeSingle();
-  const weights = parseWeights(formData, existing?.weights as Partial<Weights> | null);
+  const weights = weightsFromPreset(formData, existing?.weights as Partial<Weights> | null);
 
   const { error: prefsError } = await supabase.from("user_preferences").upsert(
     {
