@@ -66,15 +66,75 @@ export const DIFFICULTY_VALUE_SET: ReadonlySet<string> = new Set(
   DIFFICULTY_OPTIONS.map((d) => d.value),
 );
 
-// Weight components exposed in the UI. `collab` is intentionally omitted: the
-// engine multiplies it by 0 until collaborative filtering ships, so tuning it
-// would do nothing. Its stored value is preserved untouched on save.
-export const WEIGHT_FIELDS = [
-  { key: "content", label: "Content (similar to what you play)" },
-  { key: "graph", label: "Graph similarity (Dijkstra paths)" },
-  { key: "preference", label: "Preference (your genres & tags)" },
-  { key: "popularity", label: "Popularity" },
-  { key: "recency", label: "Recency (newer games)" },
-] as const;
+// Recommendation "style" presets. Instead of exposing five raw 0–1 weights
+// (which users can't reason about), we offer a few friendly modes that each map
+// to a full weight set under the hood. `collab` is preserved separately (engine
+// multiplies it by 0 until CF ships).
+export type PresetKey = "balanced" | "similar" | "hidden" | "popular";
 
-export type WeightKey = (typeof WEIGHT_FIELDS)[number]["key"];
+interface PresetWeights {
+  content: number;
+  graph: number;
+  preference: number;
+  popularity: number;
+  recency: number;
+}
+
+export const WEIGHT_PRESETS: {
+  value: PresetKey;
+  label: string;
+  description: string;
+  weights: PresetWeights;
+}[] = [
+  {
+    value: "balanced",
+    label: "Balanced",
+    description: "A bit of everything — the default mix.",
+    weights: { content: 0.4, graph: 0.25, preference: 0.25, popularity: 0.15, recency: 0.1 },
+  },
+  {
+    value: "similar",
+    label: "More like my games",
+    description: "Lean hard into games similar to what you play.",
+    weights: { content: 0.6, graph: 0.45, preference: 0.2, popularity: 0.05, recency: 0.05 },
+  },
+  {
+    value: "hidden",
+    label: "Discover hidden gems",
+    description: "Surface lesser-known games that still fit your taste.",
+    weights: { content: 0.5, graph: 0.4, preference: 0.2, popularity: 0.0, recency: 0.15 },
+  },
+  {
+    value: "popular",
+    label: "Popular & new",
+    description: "Favor well-reviewed and recently released hits.",
+    weights: { content: 0.25, graph: 0.15, preference: 0.2, popularity: 0.5, recency: 0.4 },
+  },
+];
+
+export const WEIGHT_PRESET_MAP = Object.fromEntries(
+  WEIGHT_PRESETS.map((p) => [p.value, p.weights]),
+) as Record<PresetKey, PresetWeights>;
+
+export const PRESET_VALUE_SET: ReadonlySet<string> = new Set(WEIGHT_PRESETS.map((p) => p.value));
+export const DEFAULT_PRESET: PresetKey = "balanced";
+
+/** Best-matching preset for a stored weight set (so the UI can pre-select it). */
+export function presetFromWeights(w: Partial<PresetWeights> | null | undefined): PresetKey {
+  if (!w) return DEFAULT_PRESET;
+  let best: PresetKey = DEFAULT_PRESET;
+  let bestDiff = Infinity;
+  for (const p of WEIGHT_PRESETS) {
+    const d =
+      Math.abs((w.content ?? 0) - p.weights.content) +
+      Math.abs((w.graph ?? 0) - p.weights.graph) +
+      Math.abs((w.preference ?? 0) - p.weights.preference) +
+      Math.abs((w.popularity ?? 0) - p.weights.popularity) +
+      Math.abs((w.recency ?? 0) - p.weights.recency);
+    if (d < bestDiff) {
+      bestDiff = d;
+      best = p.value;
+    }
+  }
+  return bestDiff <= 0.02 ? best : DEFAULT_PRESET;
+}

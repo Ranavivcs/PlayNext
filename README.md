@@ -122,7 +122,10 @@ Then sign up and either:
 - skip Steam and **pick a few games you like** in the Adjust panel — recommendations
   come from those seeds.
 
-On each ranked card, hit **✨ Why this match?** for a grounded one-line explanation.
+Pick a **recommendation style** (Balanced / More like my games / Discover hidden
+gems / Popular & new) in the Adjust panel to rebalance the ranking. Each card
+shows a colour-coded "why we picked this" bar (hover any part for a plain-English
+explanation), and **✨ Why this match?** generates a grounded one-line blurb.
 
 > Steam library import requires your Steam profile's **Game details** privacy to
 > be **Public** (separate from overall profile visibility).
