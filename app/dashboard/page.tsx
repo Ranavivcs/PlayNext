@@ -605,8 +605,8 @@ function RecCard({
 }) {
   const total = BREAKDOWN_PARTS.reduce((s, p) => s + Math.max(0, item.breakdown[p.key]), 0);
   return (
-    <li className="group overflow-hidden rounded-xl border border-border bg-card shadow-[var(--shadow-card)] transition-transform duration-200 hover:-translate-y-1">
-      <div className="relative h-28">
+    <li className="rounded-xl border border-border bg-card shadow-[var(--shadow-card)] transition-transform duration-200 hover:-translate-y-1">
+      <div className="relative h-28 overflow-hidden rounded-t-xl">
         {item.headerImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={item.headerImage} alt="" className="h-full w-full object-cover" />
@@ -635,7 +635,6 @@ function RecCard({
                   key={p.key}
                   className={p.color}
                   style={{ width: `${(v / total) * 100}%` }}
-                  title={`${p.label}: ${p.tip}`}
                 />
               );
             })}
@@ -644,11 +643,14 @@ function RecCard({
           {BREAKDOWN_PARTS.filter((p) => item.breakdown[p.key] > 0).map((p) => (
             <li
               key={p.key}
-              className="flex cursor-help items-center gap-1"
-              title={`${p.tip} (${item.breakdown[p.key].toFixed(2)})`}
+              className="group/tip relative flex cursor-help items-center gap-1"
             >
               <span className={`inline-block h-2 w-2 rounded-sm ${p.color}`} />
               {p.label}
+              {/* Styled tooltip (matches the theme; replaces the native title box). */}
+              <span className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 hidden w-52 -translate-x-1/2 rounded-lg border border-border bg-card px-2.5 py-1.5 text-left text-[11px] font-normal leading-snug text-foreground shadow-[var(--shadow-card)] group-hover/tip:block">
+                {p.tip} <span className="text-faint">({item.breakdown[p.key].toFixed(2)})</span>
+              </span>
             </li>
           ))}
         </ul>
