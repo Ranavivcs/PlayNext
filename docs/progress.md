@@ -300,6 +300,14 @@ User's degree milestone. From their syllabus (PageRank/K-Means were NOT on it) w
 - **Perf note:** `loadCatalog` (full catalog + child rows each run) dominates latency, not the algorithms; faster in-prod (function next to Supabase). Lower `GRAPH_MAX_NODES` if needed.
 - **NOT yet verified:** logged-in dashboard click-through (graph bar on cards, Graph weight knob).
 
+## Recommendation UX humanization (2026-06-06) ✅ BUILT (tsc + build clean)
+User feedback after seeing the live graph term: the score-breakdown labels (content/graph/preference/popularity/recency) and the Advanced 0–1 weight inputs are dev jargon users can't understand. DECIDED with user: **plain labels + tooltips** for the breakdown, **preset modes** for the weights.
+- **Preset "recommendation style"** replaces the raw weight inputs. `preferences-options.ts`: `WEIGHT_PRESETS` (Balanced / More like my games / Discover hidden gems / Popular & new) each mapping to a full weight set; `WEIGHT_PRESET_MAP`, `PRESET_VALUE_SET`, `DEFAULT_PRESET`, `presetFromWeights(weights)` (matches saved weights back to a preset for pre-fill). Removed `WEIGHT_FIELDS`/`WeightKey`.
+- `actions.ts`: `weightsFromPreset(formData)` replaces `parseWeights`/`parseWeight` — reads the `preset` radio, looks up the weight set, preserves the hidden `collab`. `page.tsx`: Advanced `<details>` weight inputs replaced by a single-select "Recommendation style" chip group (pre-selected via `presetFromWeights`).
+- **Plain-English card breakdown.** `BREAKDOWN_PARTS` now carries a friendly `label` + a `tip`: content→"Like your games", graph→"Linked to your favorites", preference→"Your genres", popularity→"Well-reviewed", recency→"Newer", collab→"Similar players". Legend shows the label + colored dot only (raw 0.xxx numbers moved into the hover `title`, which also explains the term); bar segments get the explanation on hover.
+- README + this log updated (per the standing rule: every push updates the README).
+- **NOT yet verified:** logged-in click-through of presets + tooltips.
+
 ## ▶ RESUME HERE (next session)
 **Done up to now:** Phases 1–2; **Phase 3 FULLY DONE** (CORE; Step C **2533-game** catalog; Step D bridge + games-first dashboard + hard filters; Step E soft-pref UX = rich tag-genres, 5-pick cap, single-select vibe/difficulty); **Step F seed-based recs** (no-Steam "pick games" path, live-verified); **Phase 4 AI explanations DONE & live-verified** (per-card "Why this match?", Haiku); **README refreshed + full visual redesign to a dark+neon theme across landing/auth/dashboard** (built clean; dashboard awaits a logged-in click-through). App renamed **GameMatch AI → PlayNext**, pushed to **github.com/Ranavivcs/PlayNext** (private). Pure `lib/reco/` still untouched. RAWG DEFERRED (Steam-only v1).
 
