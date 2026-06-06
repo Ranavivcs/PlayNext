@@ -308,6 +308,11 @@ User feedback after seeing the live graph term: the score-breakdown labels (cont
 - README + this log updated (per the standing rule: every push updates the README).
 - **NOT yet verified:** logged-in click-through of presets + tooltips.
 
+## Landing "How it works / Why PlayNext is different" section (2026-06-06) ✅ BUILT (tsc + build clean)
+User asked for a product-level trust explanation (distinct from per-card "Why this match?") — why the engine ranks differently and why to trust it, in plain words. DECIDED with user: put it on the **landing page** (fills the empty space below the two path cards; trust-building pre-signup).
+- `app/page.tsx`: new "How it works" section + `FeatureCard` helper. Four points: 🧮 A real algorithm not a guess (similarity + shortest paths, no black box), ⏱️ Learns from what you actually play (playtime is the signal), 🔍 You see exactly why (the explainable score bar), ✨ AI explains never decides. Closes with "CS final project — the algorithm is ours, fully explainable." Replaced the old one-line footnote. README already conveys these points (in sync; no change needed).
+- Screenshot-verified in the real Next app (renders below the path cards, on-brand neon panels).
+
 ## ▶ RESUME HERE (next session)
 **Done up to now:** Phases 1–2; **Phase 3 FULLY DONE** (CORE; Step C **2533-game** catalog; Step D bridge + games-first dashboard + hard filters; Step E soft-pref UX = rich tag-genres, 5-pick cap, single-select vibe/difficulty); **Step F seed-based recs** (no-Steam "pick games" path, live-verified); **Phase 4 AI explanations DONE & live-verified** (per-card "Why this match?", Haiku); **README refreshed + full visual redesign to a dark+neon theme across landing/auth/dashboard** (built clean; dashboard awaits a logged-in click-through). App renamed **GameMatch AI → PlayNext**, pushed to **github.com/Ranavivcs/PlayNext** (private). Pure `lib/reco/` still untouched. RAWG DEFERRED (Steam-only v1).
 
