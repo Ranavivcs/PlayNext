@@ -110,6 +110,9 @@ export async function generateRecommendations(opts: RunOptions): Promise<RunResu
     topK,
     mmrLambda,
     now,
+    // Use Kruskal-MST single-linkage clustering for diversity (the graph
+    // algorithm), instead of MMR, on the live path.
+    diversify: "mst",
   });
 
   let recId: string | null = null;

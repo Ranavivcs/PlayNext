@@ -5,7 +5,9 @@ Personalized Steam game recommendations from a hybrid ranking engine.
 PlayNext links your Steam account, learns your taste from the games you own and
 how long you've played them, and ranks games you don't own yet. The ranking is a
 **real algorithm** — TF-IDF over genres/community tags, playtime-weighted cosine
-similarity, damped popularity, recency, soft preferences, and MMR for diversity.
+similarity (k-NN), **Dijkstra shortest-path similarity on a game graph**, damped
+popularity, recency, soft preferences, and **Kruskal-MST single-linkage
+clustering** for diversity.
 A separate AI layer only *explains* the ranked results — a per-game "why this
 matches you" blurb generated **after** ranking; **it never ranks.**
 
@@ -52,7 +54,10 @@ route → fetch (steam / db) → reco → ai → response
 ```
 
 - **`lib/reco/`** — the pure ranking engine. Data in → scores out. No DB, no
-  network, no LLM, no unseeded randomness. Unit-tested with fixtures.
+  network, no LLM, no unseeded randomness. Unit-tested with fixtures. Classic
+  algorithms: TF-IDF k-NN cosine, multi-source **Dijkstra** (binary heap) for
+  shortest-path similarity, and **Kruskal MST** (union-find) single-linkage
+  clustering for diversity.
 - **`lib/reco-data/`** — impure bridge: loads the catalog + user data from
   Supabase, applies hard filters, calls `lib/reco`, persists results. The
   Supabase client is **injected** so it runs under both a service-role script and

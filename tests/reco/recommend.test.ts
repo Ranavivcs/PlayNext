@@ -42,7 +42,8 @@ test("breakdown sums to score for every result", () => {
       r.breakdown.preference +
       r.breakdown.popularity +
       r.breakdown.recency +
-      r.breakdown.collab;
+      r.breakdown.collab +
+      r.breakdown.graph;
     assert.ok(Math.abs(sum - r.score) < 1e-9, `breakdown ${sum} != score ${r.score}`);
   }
 });
@@ -100,6 +101,83 @@ test("MMR with lambda < 1 is more genre-diverse than lambda = 1", () => {
   assert.ok(
     distinctGenres(0.3) > distinctGenres(1),
     "diversity re-ranking should increase distinct genres",
+  );
+});
+
+test("graph (Dijkstra) term contributes and breakdown still sums to score", () => {
+  const catalog = buildCatalog();
+  const user = actionLover(catalog);
+  const withGraph: Weights = { ...CONTENT_ONLY, content: 0, graph: 1 };
+  const results = recommend({
+    candidates: catalog,
+    owned: user.owned,
+    ownedFeatures: user.ownedFeatures,
+    weights: withGraph,
+    mmrLambda: 1,
+    now: NOW,
+    topK: 10,
+  });
+  assert.ok(results.length > 0);
+  // At least one result has a positive graph contribution (reachable in the graph).
+  assert.ok(results.some((r) => r.breakdown.graph > 0), "graph term never fired");
+  for (const r of results) {
+    const sum =
+      r.breakdown.content +
+      r.breakdown.preference +
+      r.breakdown.popularity +
+      r.breakdown.recency +
+      r.breakdown.collab +
+      r.breakdown.graph;
+    assert.ok(Math.abs(sum - r.score) < 1e-9);
+  }
+});
+
+test("graph similarity ranks same-genre games near the user's taste", () => {
+  const catalog = buildCatalog();
+  const user = actionLover(catalog); // plays Action games
+  const relevant = new Set(user.relevantAppIds); // held-out Action games
+  const results = recommend({
+    candidates: catalog,
+    owned: user.owned,
+    ownedFeatures: user.ownedFeatures,
+    weights: { ...CONTENT_ONLY, content: 0, graph: 1 },
+    mmrLambda: 1,
+    now: NOW,
+    topK: 5,
+  });
+  const ndcg = ndcgAtK(results.map((r) => r.appId), relevant, 5);
+  assert.ok(ndcg > 0, `graph-only NDCG@5 should be > 0, got ${ndcg}`);
+});
+
+test("MST diversification yields at least as many genres as pure relevance", () => {
+  const catalog = buildCatalog();
+  const user = actionLover(catalog);
+  const genreOf = new Map(catalog.map((g) => [g.appId, g.genres[0]]));
+  const distinct = (results: { appId: number }[]) =>
+    new Set(results.map((r) => genreOf.get(r.appId))).size;
+
+  const relevanceOnly = recommend({
+    candidates: catalog,
+    owned: user.owned,
+    ownedFeatures: user.ownedFeatures,
+    weights: CONTENT_ONLY,
+    mmrLambda: 1,
+    now: NOW,
+    topK: 10,
+  });
+  const mst = recommend({
+    candidates: catalog,
+    owned: user.owned,
+    ownedFeatures: user.ownedFeatures,
+    weights: CONTENT_ONLY,
+    diversify: "mst",
+    now: NOW,
+    topK: 10,
+  });
+  assert.equal(mst.length, 10);
+  assert.ok(
+    distinct(mst) >= distinct(relevanceOnly),
+    `MST diversity (${distinct(mst)}) should be >= relevance-only (${distinct(relevanceOnly)})`,
   );
 });
 

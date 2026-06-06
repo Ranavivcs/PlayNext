@@ -10,6 +10,18 @@ import type { CatalogEntry } from "./types.ts";
 
 const PAGE = 1000;
 
+// The catalog is a SHARED, public, rarely-changing dataset (changes only when
+// enrichment runs), and loading it is the dominant cost of a recommendation run
+// (~thousands of rows over the network). Cache it in-process with a short TTL so
+// repeat runs on a warm server skip the fetch; enrichment shows up after the TTL.
+const CATALOG_TTL_MS = 5 * 60 * 1000;
+let catalogCache: { at: number; data: CatalogEntry[] } | null = null;
+
+/** Clear the cached catalog (e.g. right after an enrichment run). */
+export function invalidateCatalogCache(): void {
+  catalogCache = null;
+}
+
 /** Page through a table/select, returning every row. */
 async function loadAll<T>(
   client: SupabaseClient,
@@ -65,6 +77,10 @@ function groupBy<T extends { app_id: number }>(
  * universe; hard filters narrow it, then the engine re-scores (cheap at ~300).
  */
 export async function loadCatalog(client: SupabaseClient): Promise<CatalogEntry[]> {
+  if (catalogCache && Date.now() - catalogCache.at < CATALOG_TTL_MS) {
+    return catalogCache.data;
+  }
+
   const [games, genreRows, tagRows, categoryRows] = await Promise.all([
     loadAll<GameRow>(client, "games", GAME_COLUMNS, (q) => q.not("enriched_at", "is", null)),
     loadAll<{ app_id: number; genre: string }>(client, "game_genres", "app_id,genre"),
@@ -80,7 +96,7 @@ export async function loadCatalog(client: SupabaseClient): Promise<CatalogEntry[
   const tagsByApp = groupBy(tagRows, (r) => r.tag);
   const categoriesByApp = groupBy(categoryRows, (r) => r.category);
 
-  return games.map((g) => {
+  const entries: CatalogEntry[] = games.map((g) => {
     const features: GameFeatures = {
       appId: g.app_id,
       name: g.name,
@@ -101,6 +117,9 @@ export async function loadCatalog(client: SupabaseClient): Promise<CatalogEntry[
       categories: categoriesByApp.get(g.app_id) ?? [],
     };
   });
+
+  catalogCache = { at: Date.now(), data: entries };
+  return entries;
 }
 
 /**

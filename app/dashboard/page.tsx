@@ -22,6 +22,7 @@ interface Breakdown {
   popularity: number;
   recency: number;
   collab: number;
+  graph: number;
 }
 
 export default async function DashboardPage({
@@ -169,6 +170,7 @@ export default async function DashboardPage({
           popularity: 0,
           recency: 0,
           collab: 0,
+          graph: 0,
         },
         name: game?.name ?? `App ${r.app_id}`,
         headerImage: game?.header_image ?? null,
@@ -543,6 +545,7 @@ function ChipGroup({ label, children }: { label: string; children: React.ReactNo
 
 const BREAKDOWN_PARTS: { key: keyof Breakdown; label: string; color: string }[] = [
   { key: "content", label: "Content", color: "bg-violet-500" },
+  { key: "graph", label: "Graph", color: "bg-fuchsia-400" },
   { key: "preference", label: "Preference", color: "bg-emerald-400" },
   { key: "popularity", label: "Popularity", color: "bg-amber-400" },
   { key: "recency", label: "Recency", color: "bg-sky-400" },
