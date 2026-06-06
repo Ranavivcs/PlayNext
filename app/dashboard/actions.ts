@@ -82,6 +82,7 @@ function parseWeights(formData: FormData, current: Partial<Weights> | null): Wei
     typeof current?.collab === "number" ? current.collab : DEFAULT_WEIGHTS.collab;
   return {
     content: parseWeight(formData.get("w_content"), DEFAULT_WEIGHTS.content),
+    graph: parseWeight(formData.get("w_graph"), DEFAULT_WEIGHTS.graph ?? 0),
     preference: parseWeight(formData.get("w_preference"), DEFAULT_WEIGHTS.preference),
     popularity: parseWeight(formData.get("w_popularity"), DEFAULT_WEIGHTS.popularity),
     recency: parseWeight(formData.get("w_recency"), DEFAULT_WEIGHTS.recency),

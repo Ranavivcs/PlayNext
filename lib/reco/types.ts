@@ -7,6 +7,9 @@ export interface Weights {
   popularity: number;
   recency: number;
   collab: number;
+  /** Graph-similarity term (Dijkstra shortest-path on the game graph). Optional
+   *  so older callers/persisted rows without it default to 0. */
+  graph?: number;
 }
 
 /** Game-length / time-investment bucket (from median total playtime). */
@@ -56,6 +59,11 @@ export interface RecommendInput {
   topK?: number;
   /** MMR trade-off: 1 = pure relevance, 0 = pure diversity (default 0.7). */
   mmrLambda?: number;
+  /** Neighbours per node in the similarity graph (Dijkstra/MST). Default 10. */
+  graphK?: number;
+  /** Diversity method for the final shortlist (default "mmr"). "mst" uses
+   *  Kruskal single-linkage clustering to spread results across clusters. */
+  diversify?: "mmr" | "mst";
   /** Reference time for the recency term (injectable for deterministic tests). */
   now?: Date;
 }
@@ -67,6 +75,7 @@ export interface ScoreBreakdown {
   popularity: number;
   recency: number;
   collab: number;
+  graph: number;
 }
 
 export interface ScoredGame {

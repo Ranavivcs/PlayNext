@@ -71,6 +71,7 @@ export const DIFFICULTY_VALUE_SET: ReadonlySet<string> = new Set(
 // would do nothing. Its stored value is preserved untouched on save.
 export const WEIGHT_FIELDS = [
   { key: "content", label: "Content (similar to what you play)" },
+  { key: "graph", label: "Graph similarity (Dijkstra paths)" },
   { key: "preference", label: "Preference (your genres & tags)" },
   { key: "popularity", label: "Popularity" },
   { key: "recency", label: "Recency (newer games)" },

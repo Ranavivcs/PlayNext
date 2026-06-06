@@ -6,13 +6,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { GameLength, OwnedGame, Weights } from "../reco/types.ts";
 
-// Mirrors the user_preferences.weights default in 0001_initial_schema.sql.
+// Mirrors the user_preferences.weights default in 0001_initial_schema.sql,
+// plus `graph` (Dijkstra similarity term) which defaults for rows predating it.
 export const DEFAULT_WEIGHTS: Weights = {
   content: 0.4,
   preference: 0.25,
   popularity: 0.15,
   recency: 0.1,
   collab: 0.1,
+  graph: 0.25,
 };
 
 export interface UserContext {
@@ -38,13 +40,14 @@ function coerceWeights(raw: unknown): Weights {
   if (!raw || typeof raw !== "object") return { ...DEFAULT_WEIGHTS };
   const w = raw as Record<string, unknown>;
   const num = (k: keyof Weights) =>
-    typeof w[k] === "number" ? (w[k] as number) : DEFAULT_WEIGHTS[k];
+    typeof w[k] === "number" ? (w[k] as number) : DEFAULT_WEIGHTS[k] ?? 0;
   return {
     content: num("content"),
     preference: num("preference"),
     popularity: num("popularity"),
     recency: num("recency"),
     collab: num("collab"),
+    graph: num("graph"),
   };
 }
 

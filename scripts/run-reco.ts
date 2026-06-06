@@ -68,8 +68,9 @@ async function main(): Promise<void> {
     const b = r.breakdown;
     console.log(
       `  ${String(i + 1).padStart(2)}. ${r.name}  score=${r.score.toFixed(4)}  ` +
-        `[content=${b.content.toFixed(3)} pref=${b.preference.toFixed(3)} ` +
-        `pop=${b.popularity.toFixed(3)} rec=${b.recency.toFixed(3)}]`,
+        `[content=${b.content.toFixed(3)} graph=${b.graph.toFixed(3)} ` +
+        `pref=${b.preference.toFixed(3)} pop=${b.popularity.toFixed(3)} ` +
+        `rec=${b.recency.toFixed(3)}]`,
     );
   });
 }

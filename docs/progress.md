@@ -286,6 +286,20 @@ DECIDED with user (original design, retained): **soft preference folded into the
 - **UI:** `LENGTH_OPTIONS` in `preferences-options.ts`; single-select "Game length" chips (Any / Short ≤5h / Medium 5–20h / Long 20h+) in the "Lean toward" group; `actions.ts` parses `length` → `preferred_length` column (own column, NOT a tag); `page.tsx` pre-fills from saved value.
 - **NOT yet verified live:** logged-in click-through (pick a length → Update → Preference bar reflects length match).
 
+## Classic CS algorithms: Dijkstra + Kruskal MST (2026-06-06) ✅ BUILT & LIVE-VERIFIED (script)
+User's degree milestone. From their syllabus (PageRank/K-Means were NOT on it) we picked **Dijkstra** (shortest-path similarity) + **Kruskal MST** (single-linkage diversity) — covers Dijkstra, a binary heap, MST, edge-sorting, and union-find. Built core-first (like Phase 3), all PURE.
+### Stage 1 — pure algorithm core ✅ (commit cd07a11)
+- **`lib/reco/heap.ts`** — binary min-heap (priority queue for Dijkstra; lazy deletion, no decrease-key).
+- **`lib/reco/graph.ts`** — `buildSimilarityGraph` (kNN over tag-vector cosine, edge weight = 1−cosine, symmetrised), multi-source `dijkstra` (heap), `DSU` (union-find, path compression + union by rank), `kruskalMST` (sorted edges + DSU), `mstClusters` (cut heaviest MST edges → single-linkage clusters).
+- **`tests/reco/graph.test.ts`** — 7 tests on known tiny graphs (heap order, Dijkstra single/multi-source distances, DSU, Kruskal excludes cycle edge, MST clustering cuts, builder links same-genre).
+### Stage 2 — integration ✅
+- **Dijkstra → a new `graph` scoring term.** `GameFeatures` unchanged; `Weights.graph?` (optional, default 0.25 in DEFAULT_WEIGHTS) + `ScoreBreakdown.graph`. `score.ts` `graphScore(dist)=exp(-dist)`. `recommend.ts` restructured into 3 phases: (1) cheap non-graph base scores, (2) build the graph over the **top `GRAPH_MAX_NODES=800` candidates by base score ∪ owned** (caps the O(n²) build), multi-source Dijkstra from owned (taste sources, dist 0) → `graphScore`, (3) fold the graph term in. Transitive similarity: "you like A, A~B, B~C ⇒ C".
+- **Kruskal MST → diversity.** `RecommendInput.diversify?: "mmr"|"mst"` (default "mmr"; **live path uses "mst"** via run.ts). `mstDiversify` picks one best item per MST cluster first (spread), then fills by score.
+- **Bridge/UI:** `coerceWeights`/`DEFAULT_WEIGHTS` include `graph`; `WEIGHT_FIELDS` adds a "Graph similarity (Dijkstra)" knob; `parseWeights` reads `w_graph`; `page.tsx` Breakdown + BREAKDOWN_PARTS add a fuchsia "Graph" segment; `run.ts` passes `diversify:"mst"`.
+- **Verified:** `tsc` clean; `npm run build` clean; **21/21 reco tests** (11 original + 7 graph + 3 integration: graph term sums into score, graph-only NDCG@5 > 0, MST diversity ≥ relevance-only). **Live script run** (`run-reco.ts`, "Ran"): graph term fires strongly (Counter-Strike: Source graph=0.195, neighbours of the CS2 library rank high), scores sum, ~19s (mostly network DB load; graph build ~1s after the 800-cap). Pure `lib/reco/` intact.
+- **Perf note:** `loadCatalog` (full catalog + child rows each run) dominates latency, not the algorithms; faster in-prod (function next to Supabase). Lower `GRAPH_MAX_NODES` if needed.
+- **NOT yet verified:** logged-in dashboard click-through (graph bar on cards, Graph weight knob).
+
 ## ▶ RESUME HERE (next session)
 **Done up to now:** Phases 1–2; **Phase 3 FULLY DONE** (CORE; Step C **2533-game** catalog; Step D bridge + games-first dashboard + hard filters; Step E soft-pref UX = rich tag-genres, 5-pick cap, single-select vibe/difficulty); **Step F seed-based recs** (no-Steam "pick games" path, live-verified); **Phase 4 AI explanations DONE & live-verified** (per-card "Why this match?", Haiku); **README refreshed + full visual redesign to a dark+neon theme across landing/auth/dashboard** (built clean; dashboard awaits a logged-in click-through). App renamed **GameMatch AI → PlayNext**, pushed to **github.com/Ranavivcs/PlayNext** (private). Pure `lib/reco/` still untouched. RAWG DEFERRED (Steam-only v1).
 

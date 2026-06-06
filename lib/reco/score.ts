@@ -22,6 +22,16 @@ export function popularityScore(
   return clamp01(popNorm) * clamp01(positiveRatio);
 }
 
+/**
+ * Convert a Dijkstra shortest-path distance (sum of 1−cosine edge weights from
+ * the user's taste to a game) into a [0,1] similarity. Exponential decay: dist 0
+ * → 1, unreachable (Infinity) → 0. Closer in the graph = higher score.
+ */
+export function graphScore(distance: number): number {
+  if (!Number.isFinite(distance)) return 0;
+  return clamp01(Math.exp(-distance));
+}
+
 const MS_PER_YEAR = 365.25 * 24 * 60 * 60 * 1000;
 const HALF_LIFE_YEARS = 2;
 
