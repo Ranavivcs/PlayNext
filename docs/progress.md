@@ -313,6 +313,12 @@ User asked for a product-level trust explanation (distinct from per-card "Why th
 - `app/page.tsx`: new "How it works" section + `FeatureCard` helper. Four points: 🧮 A real algorithm not a guess (similarity + shortest paths, no black box), ⏱️ Learns from what you actually play (playtime is the signal), 🔍 You see exactly why (the explainable score bar), ✨ AI explains never decides. Closes with "CS final project — the algorithm is ours, fully explainable." Replaced the old one-line footnote. README already conveys these points (in sync; no change needed).
 - Screenshot-verified in the real Next app (renders below the path cards, on-brand neon panels).
 
+## Pending/loading feedback on slow actions (2026-06-06) ✅ BUILT (tsc + build clean)
+User: the "Update recommendations" + "Why this match?" buttons gave no sign the press worked (server actions take seconds: catalog load + engine, or the AI call).
+- **`components/submit-button.tsx`** (NEW client comp) — `SubmitButton` uses React `useFormStatus()` to show a spinner + `pendingText` and disable itself while the parent form's server action runs (progressive enhancement; must live inside the form).
+- Wired into `page.tsx`: **Update recommendations** ("Updating…"), per-card **✨ Why this match?** ("Thinking…"), and **Sync library** ("Syncing…"). README in sync (UI state, no documented behavior change).
+- **NOT yet verified:** logged-in click-through of the spinners.
+
 ## ▶ RESUME HERE (next session)
 **Done up to now:** Phases 1–2; **Phase 3 FULLY DONE** (CORE; Step C **2533-game** catalog; Step D bridge + games-first dashboard + hard filters; Step E soft-pref UX = rich tag-genres, 5-pick cap, single-select vibe/difficulty); **Step F seed-based recs** (no-Steam "pick games" path, live-verified); **Phase 4 AI explanations DONE & live-verified** (per-card "Why this match?", Haiku); **README refreshed + full visual redesign to a dark+neon theme across landing/auth/dashboard** (built clean; dashboard awaits a logged-in click-through). App renamed **GameMatch AI → PlayNext**, pushed to **github.com/Ranavivcs/PlayNext** (private). Pure `lib/reco/` still untouched. RAWG DEFERRED (Steam-only v1).
 

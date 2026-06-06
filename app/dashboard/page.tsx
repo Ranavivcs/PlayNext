@@ -16,6 +16,7 @@ import {
 } from "./preferences-options";
 import { GenrePicker } from "./preference-chips";
 import { SeedPicker } from "./seed-picker";
+import { SubmitButton } from "@/components/submit-button";
 
 interface Breakdown {
   content: number;
@@ -362,9 +363,9 @@ export default async function DashboardPage({
                   </div>
                 </div>
 
-                <button type="submit" className="btn btn-primary">
+                <SubmitButton className="btn btn-primary" pendingText="Updating…">
                   Update recommendations
-                </button>
+                </SubmitButton>
               </form>
             </details>
 
@@ -413,9 +414,9 @@ export default async function DashboardPage({
                 </div>
                 <div className="flex items-center gap-4">
                   <form action={syncSteamLibrary}>
-                    <button type="submit" className="btn btn-primary btn-sm">
+                    <SubmitButton className="btn btn-primary btn-sm" pendingText="Syncing…">
                       {steam.last_synced_at ? "Re-sync library" : "Sync library"}
-                    </button>
+                    </SubmitButton>
                   </form>
                   <a
                     href="/api/steam/link"
@@ -662,12 +663,12 @@ function RecCard({
           <form action={explainRec} className="border-t border-border pt-2.5">
             <input type="hidden" name="rec_id" value={recId} />
             <input type="hidden" name="app_id" value={item.appId} />
-            <button
-              type="submit"
+            <SubmitButton
               className="text-xs font-semibold text-brand transition hover:brightness-110"
+              pendingText="Thinking…"
             >
               ✨ Why this match?
-            </button>
+            </SubmitButton>
           </form>
         )}
       </div>
