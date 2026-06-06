@@ -88,12 +88,64 @@ export default async function Home({
           />
         </div>
 
-        <p className="mt-12 text-xs text-faint">
-          The AI layer only <span className="text-muted-foreground">explains</span> the
-          ranking — it never ranks. The algorithm is ours.
+      </section>
+
+      {/* How it works — why the engine is different and trustworthy */}
+      <section className="mx-auto w-full max-w-5xl px-6 pb-24">
+        <div className="mb-8 text-center">
+          <span className="text-xs font-bold uppercase tracking-[0.16em] text-brand">
+            How it works
+          </span>
+          <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+            Why PlayNext is different
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-base text-muted-foreground">
+            Most stores push whatever&apos;s trending. PlayNext ranks for{" "}
+            <span className="text-foreground">you</span> — and shows its work.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FeatureCard
+            icon="🧮"
+            title="A real algorithm, not a guess"
+            body="We rank with actual math — how similar a game is to your library, plus the shortest paths between games in a similarity network. No mystery black box."
+          />
+          <FeatureCard
+            icon="⏱️"
+            title="Learns from what you actually play"
+            body="The hours you pour into a game count more than a star rating you never gave. Your real playtime is the signal we learn from."
+          />
+          <FeatureCard
+            icon="🔍"
+            title="You see exactly why"
+            body="Every recommendation comes with a colour-coded breakdown of the reasons it ranked — nothing hidden. Hover any part to see what it means."
+          />
+          <FeatureCard
+            icon="✨"
+            title="AI explains, never decides"
+            body="The algorithm does the ranking. The AI only turns the reasons into a sentence — it never chooses your games for you."
+          />
+        </div>
+        <p className="mt-8 text-center text-xs text-faint">
+          Built as a CS final project — the ranking algorithm is ours, and it&apos;s fully
+          explainable.
         </p>
       </section>
     </main>
+  );
+}
+
+function FeatureCard({ icon, title, body }: { icon: string; title: string; body: string }) {
+  return (
+    <div className="panel p-5 text-left">
+      <div className="flex items-center gap-2.5">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-secondary text-lg">
+          {icon}
+        </span>
+        <h3 className="text-base font-semibold">{title}</h3>
+      </div>
+      <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">{body}</p>
+    </div>
   );
 }
 
