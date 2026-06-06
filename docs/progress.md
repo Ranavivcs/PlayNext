@@ -319,6 +319,11 @@ User: the "Update recommendations" + "Why this match?" buttons gave no sign the 
 - Wired into `page.tsx`: **Update recommendations** ("Updating…"), per-card **✨ Why this match?** ("Thinking…"), and **Sync library** ("Syncing…"). README in sync (UI state, no documented behavior change).
 - **NOT yet verified:** logged-in click-through of the spinners.
 
+## Themed tooltips on the score-bar legend (2026-06-06) ✅ BUILT (tsc + build clean)
+User: the hover explanation on the card metrics used the browser-native `title` box (white, system font) — clashes with the dark+neon theme.
+- `page.tsx` RecCard: replaced the native `title` on each legend item with a **styled CSS tooltip** (`group/tip` + `group-hover/tip:block`, `.bg-card`/border/shadow, positioned `bottom-full`). Removed the native `title` from the thin bar segments too (legend tooltips cover it). To let the tooltip overflow, moved the card's `overflow-hidden` OFF the root and ONTO the image container (`rounded-t-xl overflow-hidden`) so image corners still clip.
+- (Minor remaining native `title`: the preset-style chips — left as-is; descriptions also show in the panel subtext.)
+
 ## ▶ RESUME HERE (next session)
 **Done up to now:** Phases 1–2; **Phase 3 FULLY DONE** (CORE; Step C **2533-game** catalog; Step D bridge + games-first dashboard + hard filters; Step E soft-pref UX = rich tag-genres, 5-pick cap, single-select vibe/difficulty); **Step F seed-based recs** (no-Steam "pick games" path, live-verified); **Phase 4 AI explanations DONE & live-verified** (per-card "Why this match?", Haiku); **README refreshed + full visual redesign to a dark+neon theme across landing/auth/dashboard** (built clean; dashboard awaits a logged-in click-through). App renamed **GameMatch AI → PlayNext**, pushed to **github.com/Ranavivcs/PlayNext** (private). Pure `lib/reco/` still untouched. RAWG DEFERRED (Steam-only v1).
 
