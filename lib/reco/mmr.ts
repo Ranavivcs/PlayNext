@@ -14,9 +14,17 @@ export interface MmrItem {
  * Returns up to k items in selection order.
  */
 export function mmrRerank<T extends MmrItem>(items: T[], lambda: number, k: number): T[] {
+  const limit = Math.min(k, items.length);
+
+  // λ ≥ 1 is pure relevance: the diversity term is zeroed, so the greedy result
+  // is exactly the top-k by score. Skip the O(k·n) similarity work (a stable sort
+  // preserves input order among score ties, matching the greedy tie-break).
+  if (lambda >= 1) {
+    return items.slice().sort((a, b) => b.score - a.score).slice(0, limit);
+  }
+
   const pool = items.slice();
   const selected: T[] = [];
-  const limit = Math.min(k, pool.length);
 
   while (selected.length < limit && pool.length > 0) {
     let bestIdx = 0;

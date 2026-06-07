@@ -53,6 +53,14 @@ export interface RecommendInput {
   preferredTags?: string[];
   /** Preferred game length; folded into the preference term. */
   preferredLength?: GameLength | null;
+  /**
+   * How the content taste is represented.
+   *  - "single" (default): one playtime-weighted centroid over all owned games.
+   *  - "clustered": cluster owned games (MST single-linkage) into multiple taste
+   *    centroids and score a candidate by its NEAREST cluster. Avoids a diverse
+   *    library averaging into a muddy centroid that matches nothing.
+   */
+  tasteMode?: "single" | "clustered";
   dismissedAppIds?: number[];
   weights: Weights;
   /** How many results to return (default 10). */
