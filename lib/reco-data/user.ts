@@ -6,13 +6,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { GameLength, OwnedGame, Weights } from "../reco/types.ts";
 
-// Mirrors the user_preferences.weights default in 0001_initial_schema.sql,
-// plus `graph` (Dijkstra similarity term) which defaults for rows predating it.
+// Default weights — content-led, per the offline evaluation (scripts/eval-*.ts,
+// docs/progress.md): content/graph similarity carry personalization; popularity
+// and recency only break ties (small) since a popularity-led mix tanks relevance
+// (~85x worse NDCG than content). Small popularity/recency are kept for quality
+// signal + discovery, not ranking. `graph` = Dijkstra similarity term.
 export const DEFAULT_WEIGHTS: Weights = {
-  content: 0.4,
-  preference: 0.25,
-  popularity: 0.15,
-  recency: 0.1,
+  content: 0.5,
+  preference: 0.2,
+  popularity: 0.05,
+  recency: 0.05,
   collab: 0.1,
   graph: 0.25,
 };
