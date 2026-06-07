@@ -11,6 +11,13 @@ clustering** for diversity.
 A separate AI layer only *explains* the ranked results — a per-game "why this
 matches you" blurb generated **after** ranking; **it never ranks.**
 
+The engine is **evaluated, not just asserted**: on a de-biased synthetic-user
+benchmark it beats a popularity baseline by **~85× on NDCG@10**, and a
+learning-to-rank pass independently recovers content-dominant, popularity-≈0
+weights. Full methodology, results (including honest negative results), and the
+mapping of each classic algorithm to the code are in
+[docs/algorithm-writeup.md](docs/algorithm-writeup.md).
+
 **Two ways to use it:**
 1. **Steam users** — link your account; recommendations come from your library + playtime.
 2. **No Steam (or want something specific)** — pick a few games you like; PlayNext
