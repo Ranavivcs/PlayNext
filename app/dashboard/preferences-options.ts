@@ -89,8 +89,8 @@ export const WEIGHT_PRESETS: {
   {
     value: "balanced",
     label: "Balanced",
-    description: "A bit of everything — the default mix.",
-    weights: { content: 0.4, graph: 0.25, preference: 0.25, popularity: 0.15, recency: 0.1 },
+    description: "Mostly your taste, with a touch of popular & new.",
+    weights: { content: 0.5, graph: 0.25, preference: 0.2, popularity: 0.05, recency: 0.05 },
   },
   {
     value: "similar",
