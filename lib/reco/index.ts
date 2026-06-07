@@ -5,3 +5,4 @@ export * from "./score.ts";
 export * from "./mmr.ts";
 export * from "./recommend.ts";
 export * from "./metrics.ts";
+export * from "./learn.ts";

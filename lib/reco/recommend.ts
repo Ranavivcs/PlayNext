@@ -10,6 +10,7 @@ import {
   dijkstra,
   kruskalMST,
   mstClusters,
+  DSU,
   type SimGraph,
 } from "./graph.ts";
 
@@ -20,6 +21,56 @@ const DEFAULT_GRAPH_K = 10;
 // Cap the similarity-graph node count (build is O(n^2)). The topK always comes
 // from the highest base-scored candidates, so graphing the head is sufficient.
 const GRAPH_MAX_NODES = 800;
+// Clustered taste: owned games linked by an MST edge of distance ≤ this (i.e.
+// cosine similarity ≥ 1 − this) share a taste cluster; less-similar games split
+// into separate clusters (orphans become singletons). Tuned via the eval harness.
+const CLUSTER_MAX_DIST = 0.8;
+
+/**
+ * Build the content taste as one or more centroids. "single" returns the lone
+ * playtime-weighted centroid over all owned games. "clustered" groups owned
+ * games via MST single-linkage (reusing the graph/union-find machinery) and
+ * returns one playtime-weighted centroid per cluster, so a candidate can match
+ * the user's NEAREST taste cluster instead of a blurry all-games average.
+ */
+function buildTasteCentroids(
+  ownedFeatures: GameFeatures[],
+  playtimeByApp: Map<number, number>,
+  idf: Map<string, number>,
+  mode: "single" | "clustered",
+  graphK: number,
+): SparseVector[] {
+  if (ownedFeatures.length === 0) return [];
+  const single = () => {
+    const t = tasteVector(ownedFeatures, playtimeByApp, idf);
+    return t.size > 0 ? [t] : [];
+  };
+  if (mode === "single" || ownedFeatures.length < 2) return single();
+
+  const graph = buildSimilarityGraph(
+    ownedFeatures,
+    idf,
+    Math.min(graphK, ownedFeatures.length - 1),
+  );
+  const dsu = new DSU(graph.n);
+  for (const e of kruskalMST(graph)) {
+    if (e.weight <= CLUSTER_MAX_DIST) dsu.union(e.a, e.b);
+  }
+  // Node i corresponds to ownedFeatures[i] (buildSimilarityGraph preserves order).
+  const membersByRoot = new Map<number, GameFeatures[]>();
+  for (let i = 0; i < graph.n; i++) {
+    const root = dsu.find(i);
+    const arr = membersByRoot.get(root);
+    if (arr) arr.push(ownedFeatures[i]);
+    else membersByRoot.set(root, [ownedFeatures[i]]);
+  }
+  const centroids: SparseVector[] = [];
+  for (const members of membersByRoot.values()) {
+    const c = tasteVector(members, playtimeByApp, idf);
+    if (c.size > 0) centroids.push(c);
+  }
+  return centroids.length > 0 ? centroids : single();
+}
 
 interface Candidate {
   scored: ScoredGame;
@@ -77,8 +128,23 @@ export function recommend(input: RecommendInput): ScoredGame[] {
   const playtimeByApp = new Map<number, number>();
   for (const o of input.owned) playtimeByApp.set(o.appId, o.playtimeMinutes);
 
-  const taste = tasteVector(ownedFeatures, playtimeByApp, idf);
-  const hasTaste = taste.size > 0;
+  const tasteCentroids = buildTasteCentroids(
+    ownedFeatures,
+    playtimeByApp,
+    idf,
+    input.tasteMode ?? "single",
+    input.graphK ?? DEFAULT_GRAPH_K,
+  );
+  const hasTaste = tasteCentroids.length > 0;
+  // Content similarity = best match across taste clusters (nearest cluster).
+  const contentSim = (vec: SparseVector): number => {
+    let best = 0;
+    for (const c of tasteCentroids) {
+      const s = cosine(c, vec);
+      if (s > best) best = s;
+    }
+    return best;
+  };
 
   // Corpus max for popularity normalization (over candidates).
   let maxLogReviews = 0;
@@ -106,7 +172,7 @@ export function recommend(input: RecommendInput): ScoredGame[] {
   for (const game of input.candidates) {
     if (excluded.has(game.appId)) continue;
     const vector = gameVector(game, idf);
-    const content = weights.content * (hasTaste ? cosine(taste, vector) : 0);
+    const content = weights.content * (hasTaste ? contentSim(vector) : 0);
     const preference =
       weights.preference *
       preferenceScore(game, input.preferredGenres, input.preferredTags, input.preferredLength);
