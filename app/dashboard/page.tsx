@@ -1,7 +1,15 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "../login/actions";
-import { syncSteamLibrary, updateRecommendations, explainRec, deleteAccount } from "./actions";
+import {
+  syncSteamLibrary,
+  updateRecommendations,
+  explainRec,
+  deleteAccount,
+  tryGame,
+  rateGame,
+  untryGame,
+} from "./actions";
 import type { HardFilters } from "@/lib/reco-data/filters";
 import { DEFAULT_WEIGHTS } from "@/lib/reco-data/user";
 import type { Weights } from "@/lib/reco/types";
@@ -39,6 +47,8 @@ export default async function DashboardPage({
     recs_error?: string;
     account_msg?: string;
     account_error?: string;
+    mygames_msg?: string;
+    mygames_error?: string;
   }>;
 }) {
   const supabase = await createClient();
@@ -64,6 +74,8 @@ export default async function DashboardPage({
     recs_error,
     account_msg,
     account_error,
+    mygames_msg,
+    mygames_error,
   } = await searchParams;
 
   const { data: steam } = await supabase
@@ -182,6 +194,34 @@ export default async function DashboardPage({
     });
   }
 
+  // "My games": games the user decided to try, with their feedback. Drives the
+  // engine (liked/more → taste; dislike/less + any tried → excluded) and shows
+  // the feedback controls.
+  const { data: triedRaw } = await supabase
+    .from("user_tried_games")
+    .select("app_id, rating, games(name, header_image)")
+    .eq("user_id", user.id)
+    .order("updated_at", { ascending: false });
+
+  const myGames = (triedRaw ?? []).map((row) => {
+    const r = row as {
+      app_id: number;
+      rating: string | null;
+      games:
+        | { name: string; header_image: string | null }
+        | { name: string; header_image: string | null }[]
+        | null;
+    };
+    const game = Array.isArray(r.games) ? r.games[0] : r.games;
+    return {
+      appId: r.app_id,
+      rating: r.rating,
+      name: game?.name ?? `App ${r.app_id}`,
+      headerImage: game?.header_image ?? null,
+    };
+  });
+  const triedSet = new Set(myGames.map((g) => g.appId));
+
   return (
     <main className="flex-1">
       <div className="mx-auto w-full max-w-5xl px-6 py-7">
@@ -224,6 +264,12 @@ export default async function DashboardPage({
         )}
         {account_error && (
           <p className="mb-4 rounded-lg banner-err px-3 py-2 text-sm">{account_error}</p>
+        )}
+        {mygames_msg && (
+          <p className="mb-4 rounded-lg banner-ok px-3 py-2 text-sm">{mygames_msg}</p>
+        )}
+        {mygames_error && (
+          <p className="mb-4 rounded-lg banner-err px-3 py-2 text-sm">{mygames_error}</p>
         )}
 
       {/* HERO: the games come first. Controls live in a collapsed "Adjust" panel
@@ -372,7 +418,12 @@ export default async function DashboardPage({
             {recItems.length > 0 ? (
               <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {recItems.map((item) => (
-                  <RecCard key={item.appId} item={item} recId={latestRec!.id} />
+                  <RecCard
+                    key={item.appId}
+                    item={item}
+                    recId={latestRec!.id}
+                    tried={triedSet.has(item.appId)}
+                  />
                 ))}
               </ul>
             ) : (
@@ -383,6 +434,30 @@ export default async function DashboardPage({
               </p>
             )}
           </>
+      </section>
+
+      {/* MY GAMES: games the user is trying + their feedback (feeds the engine). */}
+      <section id="my-games" className="mb-12 scroll-mt-6">
+        <div className="mb-5">
+          <h2 className="text-2xl font-bold tracking-tight">My games</h2>
+          <p className="mt-1 text-sm text-faint">
+            Games you decided to try. Tell us how they landed — your feedback shapes your next
+            recommendations: liked games pull recs toward them, disliked ones are filtered out.
+          </p>
+        </div>
+        {myGames.length > 0 ? (
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {myGames.map((g) => (
+              <MyGameRow key={g.appId} game={g} />
+            ))}
+          </ul>
+        ) : (
+          <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+            No games here yet — hit{" "}
+            <span className="font-semibold text-foreground">+ I&apos;ll try this</span> on a
+            recommendation to track it, then come back to review it.
+          </p>
+        )}
       </section>
 
       {/* Setup / status — secondary, below the games. */}
@@ -591,6 +666,7 @@ const BREAKDOWN_PARTS: { key: keyof Breakdown; label: string; tip: string; color
 function RecCard({
   item,
   recId,
+  tried,
 }: {
   item: {
     appId: number;
@@ -602,6 +678,7 @@ function RecCard({
     aiExplanation: string | null;
   };
   recId: string;
+  tried: boolean;
 }) {
   const total = BREAKDOWN_PARTS.reduce((s, p) => s + Math.max(0, item.breakdown[p.key]), 0);
   return (
@@ -673,6 +750,87 @@ function RecCard({
             </SubmitButton>
           </form>
         )}
+
+        {/* "I'll try this" — adds the game to "My games" so the user can review
+            it later; their review then feeds the engine. */}
+        <div className="border-t border-border pt-2.5">
+          {tried ? (
+            <span className="text-xs font-medium text-emerald-400">✓ In your games</span>
+          ) : (
+            <form action={tryGame}>
+              <input type="hidden" name="app_id" value={item.appId} />
+              <SubmitButton
+                className="text-xs font-semibold text-foreground/80 transition hover:text-brand"
+                pendingText="Adding…"
+              >
+                + I&apos;ll try this
+              </SubmitButton>
+            </form>
+          )}
+        </div>
+      </div>
+    </li>
+  );
+}
+
+// Per-game feedback options. like/more → positive (taste boost); dislike/less →
+// negative (excluded). The wording gives the user a richer signal than a binary.
+const RATING_OPTIONS: { value: string; label: string }[] = [
+  { value: "like", label: "👍 Like" },
+  { value: "more", label: "➕ More like this" },
+  { value: "dislike", label: "👎 Dislike" },
+  { value: "less", label: "➖ Less like this" },
+];
+
+function MyGameRow({
+  game,
+}: {
+  game: { appId: number; rating: string | null; name: string; headerImage: string | null };
+}) {
+  return (
+    <li className="flex gap-3 rounded-xl border border-border bg-card p-3 shadow-[var(--shadow-card)]">
+      {game.headerImage ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={game.headerImage}
+          alt=""
+          className="h-12 w-24 shrink-0 rounded-md object-cover"
+        />
+      ) : (
+        <div className="h-12 w-24 shrink-0 rounded-md bg-gradient-to-br from-violet-700/40 to-fuchsia-700/30" />
+      )}
+      <div className="min-w-0 flex-1 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="truncate text-sm font-semibold">{game.name}</h3>
+          <form action={untryGame}>
+            <input type="hidden" name="app_id" value={game.appId} />
+            <button
+              type="submit"
+              title="Remove from My games"
+              className="shrink-0 text-sm leading-none text-faint transition hover:text-destructive"
+            >
+              ×
+            </button>
+          </form>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {RATING_OPTIONS.map((r) => (
+            <form action={rateGame} key={r.value}>
+              <input type="hidden" name="app_id" value={game.appId} />
+              <input type="hidden" name="rating" value={r.value} />
+              <button
+                type="submit"
+                className={`rounded-full border px-2 py-0.5 text-[11px] font-medium transition ${
+                  game.rating === r.value
+                    ? "border-brand bg-brand/15 text-brand"
+                    : "border-border text-muted-foreground hover:border-brand/60 hover:text-foreground"
+                }`}
+              >
+                {r.label}
+              </button>
+            </form>
+          ))}
+        </div>
       </div>
     </li>
   );

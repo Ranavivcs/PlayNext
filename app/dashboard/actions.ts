@@ -287,6 +287,92 @@ export async function explainRec(formData: FormData) {
   redirect("/dashboard");
 }
 
+const VALID_RATINGS = ["like", "dislike", "more", "less"] as const;
+
+function intField(formData: FormData, key: string): number | null {
+  const raw = formData.get(key);
+  const n = typeof raw === "string" ? parseInt(raw, 10) : NaN;
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+/** Add a recommended game to "My games" (the user decided to try it). */
+export async function tryGame(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const appId = intField(formData, "app_id");
+  if (appId === null) {
+    redirect(`/dashboard?mygames_error=${encodeURIComponent("Invalid game.")}`);
+  }
+
+  // Insert if absent; leave an existing row (and its rating) untouched.
+  const { error } = await supabase
+    .from("user_tried_games")
+    .upsert({ user_id: user.id, app_id: appId }, { onConflict: "user_id,app_id", ignoreDuplicates: true });
+  if (error) {
+    redirect(`/dashboard?mygames_error=${encodeURIComponent(error.message)}`);
+  }
+  revalidatePath("/dashboard");
+  redirect(`/dashboard?mygames_msg=${encodeURIComponent("Added to your games.")}#my-games`);
+}
+
+/** Set (or change) the user's rating on a tried game — the feedback signal. */
+export async function rateGame(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const appId = intField(formData, "app_id");
+  const ratingRaw = formData.get("rating");
+  const rating =
+    typeof ratingRaw === "string" && (VALID_RATINGS as readonly string[]).includes(ratingRaw)
+      ? ratingRaw
+      : null;
+  if (appId === null || rating === null) {
+    redirect(`/dashboard?mygames_error=${encodeURIComponent("Invalid rating.")}#my-games`);
+  }
+
+  const { error } = await supabase.from("user_tried_games").upsert(
+    { user_id: user.id, app_id: appId, rating, updated_at: new Date().toISOString() },
+    { onConflict: "user_id,app_id" },
+  );
+  if (error) {
+    redirect(`/dashboard?mygames_error=${encodeURIComponent(error.message)}#my-games`);
+  }
+  revalidatePath("/dashboard");
+  redirect(`/dashboard?mygames_msg=${encodeURIComponent("Thanks — your feedback will shape your next recommendations.")}#my-games`);
+}
+
+/** Remove a game from "My games". */
+export async function untryGame(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const appId = intField(formData, "app_id");
+  if (appId === null) {
+    redirect(`/dashboard?mygames_error=${encodeURIComponent("Invalid game.")}#my-games`);
+  }
+
+  const { error } = await supabase
+    .from("user_tried_games")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("app_id", appId);
+  if (error) {
+    redirect(`/dashboard?mygames_error=${encodeURIComponent(error.message)}#my-games`);
+  }
+  revalidatePath("/dashboard");
+  redirect(`/dashboard?mygames_msg=${encodeURIComponent("Removed from your games.")}#my-games`);
+}
+
 /**
  * Permanently delete the logged-in user's account. Requires an explicit confirm
  * checkbox (defense against accidental clicks). Uses the service-role admin

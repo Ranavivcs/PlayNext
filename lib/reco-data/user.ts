@@ -27,6 +27,8 @@ export interface UserContext {
   preferredTags: string[];
   preferredLength: GameLength | null;
   dismissedAppIds: number[];
+  /** Games the user liked / asked "more like this" — extra taste boosters. */
+  likedAppIds: number[];
 }
 
 const LENGTHS: readonly GameLength[] = ["short", "medium", "long"];
@@ -76,7 +78,7 @@ export async function loadUserContext(
   client: SupabaseClient,
   userId: string,
 ): Promise<UserContext> {
-  const [owned, prefsRes, dismissedRes] = await Promise.all([
+  const [owned, prefsRes, dismissedRes, triedRes] = await Promise.all([
     loadOwned(client, userId),
     client
       .from("user_preferences")
@@ -88,14 +90,34 @@ export async function loadUserContext(
       .select("app_id")
       .eq("user_id", userId)
       .in("action", ["dismissed", "hidden"]),
+    client
+      .from("user_tried_games")
+      .select("app_id,rating")
+      .eq("user_id", userId),
   ]);
 
   if (prefsRes.error) throw new Error(`user_preferences load: ${prefsRes.error.message}`);
   if (dismissedRes.error) throw new Error(`user_feedback load: ${dismissedRes.error.message}`);
+  if (triedRes.error) throw new Error(`user_tried_games load: ${triedRes.error.message}`);
 
   const prefs = prefsRes.data;
+  const tried = triedRes.data ?? [];
+
+  // Liked / "more like this" games boost the taste vector.
+  const likedAppIds = [
+    ...new Set(
+      tried
+        .filter((r) => r.rating === "like" || r.rating === "more")
+        .map((r) => r.app_id as number),
+    ),
+  ];
+  // Exclude from results: explicit dismiss/hide, plus EVERY tried game (the user
+  // is already trying it — don't re-recommend it — and dislike/less are negatives).
   const dismissedAppIds = [
-    ...new Set((dismissedRes.data ?? []).map((r) => r.app_id as number)),
+    ...new Set([
+      ...(dismissedRes.data ?? []).map((r) => r.app_id as number),
+      ...tried.map((r) => r.app_id as number),
+    ]),
   ];
 
   return {
@@ -105,5 +127,6 @@ export async function loadUserContext(
     preferredTags: (prefs?.preferred_tags as string[]) ?? [],
     preferredLength: coerceLength(prefs?.preferred_length),
     dismissedAppIds,
+    likedAppIds,
   };
 }
