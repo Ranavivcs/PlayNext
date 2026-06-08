@@ -161,9 +161,13 @@ export async function updateRecommendations(formData: FormData) {
       userId: user.id,
       filters,
       seedAppIds,
+      // Persist a deeper list than we display (10): when the user adds a game to
+      // "My games" it drops out of the grid and the next-best slides up to fill
+      // the slot, so the grid stays full without re-running the engine.
+      topK: 16,
       persist: true,
     });
-    count = results.length;
+    count = Math.min(results.length, 10); // we display the top 10 (deeper list is backfill)
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Could not generate recommendations.";
     redirect(`/dashboard?recs_error=${encodeURIComponent(msg)}`);
@@ -287,7 +291,7 @@ export async function explainRec(formData: FormData) {
   redirect("/dashboard");
 }
 
-const VALID_RATINGS = ["like", "dislike", "more", "less"] as const;
+const VALID_RATINGS = ["like", "dislike"] as const;
 
 function intField(formData: FormData, key: string): number | null {
   const raw = formData.get(key);

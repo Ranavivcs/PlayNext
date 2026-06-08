@@ -402,6 +402,15 @@ The explicit-feedback feature that closes the learning loop: user adds a recomme
 - **Verified:** `tsc` + `npm run build` (11 routes) clean. **NOT yet live-verified** (needs migration applied + click-through: add a rec → rate it → Update → liked neighbours rise / disliked excluded).
 - **NEXT EVOLUTION (documented, not built):** once feedback data accrues, feed it to the LTR loop (`lib/reco/learn.ts`) — aggregate across users to learn global weights (real data replacing the synthetic benchmark).
 
+### "My games" UX revision (2026-06-08, after user click-through on prod)
+Migration 0004 applied by user; feature MERGED to main (`c5f877b`) + deployed. User feedback drove these fixes (all DECIDED with user):
+- **Card buttons are now real full-width buttons** (not text-link styling): "+ I'll try this" = `btn btn-primary btn-sm w-full`, "✨ Why this match?" = `btn btn-ghost btn-sm w-full`.
+- **Ratings collapsed 4 → 2** (👍 Liked it / 👎 Not for me). like/more + dislike/less was false granularity — the engine only has two directions. `RATING_OPTIONS`, `VALID_RATINGS`, `user.ts` likedAppIds (now `rating==='like'`) updated. Migration CHECK still allows more/less (harmless, unused).
+- **Tried games leave the grid + backfill:** `updateRecommendations` persists `topK:16` (deeper list); `page.tsx` renders `visibleRecs` = recItems minus `triedSet`, sliced to 10 — so "I'll try this" drops the card and #11 slides up (no gap, no re-run). Removed the in-grid "✓ In your games" state.
+- **Apply timing:** ratings apply on the next "Update recommendations" (no per-click engine run). My games subtitle says "…then hit Update recommendations to apply."
+- **KEY GOTCHA — preview deployments can't do auth:** a preview's dynamic origin isn't in Supabase's allowlisted redirect URLs, so `requestPasswordReset` (redirectTo = request-origin /auth/callback) falls back to the prod Site URL → the reset link bounces the user to PROD (skipping /reset-password), where they tested the OLD build (no feature → "no buttons"). **Test auth-touching changes on prod (no real users yet) or localhost, NOT preview deploys.**
+- Verified: tsc + build clean. Live re-verify on prod pending re-deploy.
+
 ## ▶ RESUME HERE (next session) — updated 2026-06-07
 **LIVE at https://play-next-five.vercel.app** · repo github.com/Ranavivcs/PlayNext (private).
 **Step-2 work MERGED to `main`** (PR #1, merge `77473c7`). **Current WIP:** the "My games" feedback feature is on branch **`my-games-feedback`** — code compiles (tsc+build clean) but **migration 0004 must be applied to Supabase + live click-through done before merge.**
