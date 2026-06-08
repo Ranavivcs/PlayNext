@@ -103,16 +103,14 @@ export async function loadUserContext(
   const prefs = prefsRes.data;
   const tried = triedRes.data ?? [];
 
-  // Liked / "more like this" games boost the taste vector.
+  // Liked games boost the taste vector.
   const likedAppIds = [
     ...new Set(
-      tried
-        .filter((r) => r.rating === "like" || r.rating === "more")
-        .map((r) => r.app_id as number),
+      tried.filter((r) => r.rating === "like").map((r) => r.app_id as number),
     ),
   ];
   // Exclude from results: explicit dismiss/hide, plus EVERY tried game (the user
-  // is already trying it — don't re-recommend it — and dislike/less are negatives).
+  // is already trying it — don't re-recommend it — and disliked ones are negatives).
   const dismissedAppIds = [
     ...new Set([
       ...(dismissedRes.data ?? []).map((r) => r.app_id as number),

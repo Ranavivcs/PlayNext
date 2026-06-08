@@ -24,9 +24,9 @@ mapping of each classic algorithm to the code are in
    finds similar ones. Both paths feed the same engine (picked games become the taste seed).
 
 **It learns from your feedback.** Add a recommended game to **My games** when you decide
-to try it, then rate it (Like / Dislike / More like this / Less like this). Liked games
-pull your future recommendations toward them; disliked ones are filtered out — a closed
-feedback loop that improves over time.
+to try it (it leaves the recommendations grid and the next-best slides up), then rate it
+👍 *Liked it* / 👎 *Not for me*. Liked games pull your future recommendations toward them;
+disliked ones are filtered out — a closed feedback loop that improves over time.
 
 > CS final project. The point is that we own the algorithm and architecture — the
 > AI layer is one explainable component, not the engine.

@@ -222,6 +222,11 @@ export default async function DashboardPage({
   });
   const triedSet = new Set(myGames.map((g) => g.appId));
 
+  // Show the top 10 recommendations the user hasn't already tried. We persist a
+  // deeper list (see updateRecommendations), so trying a game drops it out and
+  // the next-best slides up to keep the grid full.
+  const visibleRecs = recItems.filter((r) => !triedSet.has(r.appId)).slice(0, 10);
+
   return (
     <main className="flex-1">
       <div className="mx-auto w-full max-w-5xl px-6 py-7">
@@ -415,15 +420,10 @@ export default async function DashboardPage({
               </form>
             </details>
 
-            {recItems.length > 0 ? (
+            {visibleRecs.length > 0 ? (
               <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {recItems.map((item) => (
-                  <RecCard
-                    key={item.appId}
-                    item={item}
-                    recId={latestRec!.id}
-                    tried={triedSet.has(item.appId)}
-                  />
+                {visibleRecs.map((item) => (
+                  <RecCard key={item.appId} item={item} recId={latestRec!.id} />
                 ))}
               </ul>
             ) : (
@@ -441,8 +441,9 @@ export default async function DashboardPage({
         <div className="mb-5">
           <h2 className="text-2xl font-bold tracking-tight">My games</h2>
           <p className="mt-1 text-sm text-faint">
-            Games you decided to try. Tell us how they landed — your feedback shapes your next
-            recommendations: liked games pull recs toward them, disliked ones are filtered out.
+            Games you decided to try. Tell us how they landed — liked games pull your recs toward
+            them, disliked ones are filtered out. Then hit{" "}
+            <span className="font-medium text-foreground">Update recommendations</span> to apply.
           </p>
         </div>
         {myGames.length > 0 ? (
@@ -666,7 +667,6 @@ const BREAKDOWN_PARTS: { key: keyof Breakdown; label: string; tip: string; color
 function RecCard({
   item,
   recId,
-  tried,
 }: {
   item: {
     appId: number;
@@ -678,7 +678,6 @@ function RecCard({
     aiExplanation: string | null;
   };
   recId: string;
-  tried: boolean;
 }) {
   const total = BREAKDOWN_PARTS.reduce((s, p) => s + Math.max(0, item.breakdown[p.key]), 0);
   return (
@@ -732,38 +731,30 @@ function RecCard({
           ))}
         </ul>
 
-        {/* AI explanation: show the saved blurb, or a button to generate it. */}
-        {item.aiExplanation ? (
+        {/* Saved AI explanation, if generated. */}
+        {item.aiExplanation && (
           <p className="border-t border-border pt-2.5 text-xs leading-relaxed text-muted-foreground">
             <span className="text-brand">✨ </span>
             {item.aiExplanation}
           </p>
-        ) : (
-          <form action={explainRec} className="border-t border-border pt-2.5">
-            <input type="hidden" name="rec_id" value={recId} />
-            <input type="hidden" name="app_id" value={item.appId} />
-            <SubmitButton
-              className="text-xs font-semibold text-brand transition hover:brightness-110"
-              pendingText="Thinking…"
-            >
-              ✨ Why this match?
-            </SubmitButton>
-          </form>
         )}
 
-        {/* "I'll try this" — adds the game to "My games" so the user can review
-            it later; their review then feeds the engine. */}
-        <div className="border-t border-border pt-2.5">
-          {tried ? (
-            <span className="text-xs font-medium text-emerald-400">✓ In your games</span>
-          ) : (
-            <form action={tryGame}>
+        {/* Actions — full-width buttons. "I'll try this" (primary) adds the game
+            to My games so the user can review it; the review then feeds the
+            engine. "Why this match?" generates the AI blurb (hidden once shown). */}
+        <div className="space-y-2 border-t border-border pt-3">
+          <form action={tryGame}>
+            <input type="hidden" name="app_id" value={item.appId} />
+            <SubmitButton className="btn btn-primary btn-sm w-full" pendingText="Adding…">
+              + I&apos;ll try this
+            </SubmitButton>
+          </form>
+          {!item.aiExplanation && (
+            <form action={explainRec}>
+              <input type="hidden" name="rec_id" value={recId} />
               <input type="hidden" name="app_id" value={item.appId} />
-              <SubmitButton
-                className="text-xs font-semibold text-foreground/80 transition hover:text-brand"
-                pendingText="Adding…"
-              >
-                + I&apos;ll try this
+              <SubmitButton className="btn btn-ghost btn-sm w-full" pendingText="Thinking…">
+                ✨ Why this match?
               </SubmitButton>
             </form>
           )}
@@ -773,13 +764,12 @@ function RecCard({
   );
 }
 
-// Per-game feedback options. like/more → positive (taste boost); dislike/less →
-// negative (excluded). The wording gives the user a richer signal than a binary.
+// Per-game feedback: a clean two-way signal. like → taste boost (more of its
+// kind); dislike → excluded + ranking nudged away. (The engine only has these
+// two directions, so a 4-way "more/less like this" would be false granularity.)
 const RATING_OPTIONS: { value: string; label: string }[] = [
-  { value: "like", label: "👍 Like" },
-  { value: "more", label: "➕ More like this" },
-  { value: "dislike", label: "👎 Dislike" },
-  { value: "less", label: "➖ Less like this" },
+  { value: "like", label: "👍 Liked it" },
+  { value: "dislike", label: "👎 Not for me" },
 ];
 
 function MyGameRow({
