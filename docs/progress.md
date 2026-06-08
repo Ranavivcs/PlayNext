@@ -411,6 +411,12 @@ Migration 0004 applied by user; feature MERGED to main (`c5f877b`) + deployed. U
 - **KEY GOTCHA — preview deployments can't do auth:** a preview's dynamic origin isn't in Supabase's allowlisted redirect URLs, so `requestPasswordReset` (redirectTo = request-origin /auth/callback) falls back to the prod Site URL → the reset link bounces the user to PROD (skipping /reset-password), where they tested the OLD build (no feature → "no buttons"). **Test auth-touching changes on prod (no real users yet) or localhost, NOT preview deploys.**
 - Verified: tsc + build clean. Live re-verify on prod pending re-deploy.
 
+### "My games" round 2 (2026-06-08) — rating latency + Reviewed split
+- **Rating delay fixed:** the 👍/👎 buttons were plain `<button>`s (no pending feedback) AND `rateGame` did a full redirect → felt like a hang. Now they're `SubmitButton`s (spinner) and `rateGame` drops the success redirect (just `revalidatePath` → in-place update, no navigation).
+- **Reviewed games split:** `page.tsx` splits tried games into `toReview` (rating null → "My games" section) vs `reviewed` (rating set → new "Reviewed games" section). Rating a game moves it from My games → Reviewed (the user-requested behavior).
+- **WORKFLOW CHANGE (user pref):** dropped per-change feature branches — now committing straight to `main` (push → prod). Branches only for experimental work.
+- Verified tsc + build clean.
+
 ## ▶ RESUME HERE (next session) — updated 2026-06-07
 **LIVE at https://play-next-five.vercel.app** · repo github.com/Ranavivcs/PlayNext (private).
 **Step-2 work MERGED to `main`** (PR #1, merge `77473c7`). **Current WIP:** the "My games" feedback feature is on branch **`my-games-feedback`** — code compiles (tsc+build clean) but **migration 0004 must be applied to Supabase + live click-through done before merge.**

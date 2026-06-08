@@ -348,8 +348,9 @@ export async function rateGame(formData: FormData) {
   if (error) {
     redirect(`/dashboard?mygames_error=${encodeURIComponent(error.message)}#my-games`);
   }
+  // No redirect: revalidate updates the page in place (game moves to "Reviewed")
+  // — faster + no full navigation than a redirect-with-banner.
   revalidatePath("/dashboard");
-  redirect(`/dashboard?mygames_msg=${encodeURIComponent("Thanks — your feedback will shape your next recommendations.")}#my-games`);
 }
 
 /** Remove a game from "My games". */

@@ -221,6 +221,9 @@ export default async function DashboardPage({
     };
   });
   const triedSet = new Set(myGames.map((g) => g.appId));
+  // Split: games awaiting a verdict vs ones the user has reviewed.
+  const toReview = myGames.filter((g) => !g.rating);
+  const reviewed = myGames.filter((g) => g.rating);
 
   // Show the top 10 recommendations the user hasn't already tried. We persist a
   // deeper list (see updateRecommendations), so trying a game drops it out and
@@ -436,30 +439,47 @@ export default async function DashboardPage({
           </>
       </section>
 
-      {/* MY GAMES: games the user is trying + their feedback (feeds the engine). */}
+      {/* MY GAMES: games the user is trying but hasn't reviewed yet. */}
       <section id="my-games" className="mb-12 scroll-mt-6">
         <div className="mb-5">
           <h2 className="text-2xl font-bold tracking-tight">My games</h2>
           <p className="mt-1 text-sm text-faint">
-            Games you decided to try. Tell us how they landed — liked games pull your recs toward
-            them, disliked ones are filtered out. Then hit{" "}
-            <span className="font-medium text-foreground">Update recommendations</span> to apply.
+            Games you decided to try — tell us how they landed. Your verdict shapes future picks
+            (hit <span className="font-medium text-foreground">Update recommendations</span> to
+            apply): 👍 pulls recs toward it, 👎 filters it out.
           </p>
         </div>
-        {myGames.length > 0 ? (
+        {toReview.length > 0 ? (
           <ul className="grid gap-3 sm:grid-cols-2">
-            {myGames.map((g) => (
+            {toReview.map((g) => (
               <MyGameRow key={g.appId} game={g} />
             ))}
           </ul>
         ) : (
           <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            No games here yet — hit{" "}
+            No games waiting for a review — hit{" "}
             <span className="font-semibold text-foreground">+ I&apos;ll try this</span> on a
-            recommendation to track it, then come back to review it.
+            recommendation to track it.
           </p>
         )}
       </section>
+
+      {/* REVIEWED: games the user has rated. Their verdict feeds the engine. */}
+      {reviewed.length > 0 && (
+        <section className="mb-12">
+          <div className="mb-5">
+            <h2 className="text-2xl font-bold tracking-tight">Reviewed games</h2>
+            <p className="mt-1 text-sm text-faint">
+              Your verdicts. Change one any time — it&apos;s applied on the next Update.
+            </p>
+          </div>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {reviewed.map((g) => (
+              <MyGameRow key={g.appId} game={g} />
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Setup / status — secondary, below the games. */}
       <section>
@@ -808,16 +828,16 @@ function MyGameRow({
             <form action={rateGame} key={r.value}>
               <input type="hidden" name="app_id" value={game.appId} />
               <input type="hidden" name="rating" value={r.value} />
-              <button
-                type="submit"
-                className={`rounded-full border px-2 py-0.5 text-[11px] font-medium transition ${
+              <SubmitButton
+                pendingText=""
+                className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
                   game.rating === r.value
                     ? "border-brand bg-brand/15 text-brand"
                     : "border-border text-muted-foreground hover:border-brand/60 hover:text-foreground"
                 }`}
               >
                 {r.label}
-              </button>
+              </SubmitButton>
             </form>
           ))}
         </div>
