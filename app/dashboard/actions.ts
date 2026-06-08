@@ -293,89 +293,56 @@ export async function explainRec(formData: FormData) {
 
 const VALID_RATINGS = ["like", "dislike"] as const;
 
-function intField(formData: FormData, key: string): number | null {
-  const raw = formData.get(key);
-  const n = typeof raw === "string" ? parseInt(raw, 10) : NaN;
-  return Number.isInteger(n) && n > 0 ? n : null;
-}
-
-/** Add a recommended game to "My games" (the user decided to try it). */
-export async function tryGame(formData: FormData) {
+// These three are called directly (with args) from client components doing
+// OPTIMISTIC UI — the screen updates on click, these persist in the background.
+// So they take plain args (not FormData), don't redirect, and only revalidate so
+// the server data re-syncs. On error they return silently → the optimistic state
+// reverts to the server truth on the next render.
+async function authedClient() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  return { supabase, user };
+}
 
-  const appId = intField(formData, "app_id");
-  if (appId === null) {
-    redirect(`/dashboard?mygames_error=${encodeURIComponent("Invalid game.")}`);
-  }
-
+/** Add a recommended game to "My games" (the user decided to try it). */
+export async function tryGame(appId: number) {
+  if (!Number.isInteger(appId) || appId <= 0) return;
+  const { supabase, user } = await authedClient();
   // Insert if absent; leave an existing row (and its rating) untouched.
   const { error } = await supabase
     .from("user_tried_games")
     .upsert({ user_id: user.id, app_id: appId }, { onConflict: "user_id,app_id", ignoreDuplicates: true });
-  if (error) {
-    redirect(`/dashboard?mygames_error=${encodeURIComponent(error.message)}`);
-  }
+  if (error) return;
   revalidatePath("/dashboard");
-  redirect(`/dashboard?mygames_msg=${encodeURIComponent("Added to your games.")}#my-games`);
 }
 
 /** Set (or change) the user's rating on a tried game — the feedback signal. */
-export async function rateGame(formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const appId = intField(formData, "app_id");
-  const ratingRaw = formData.get("rating");
-  const rating =
-    typeof ratingRaw === "string" && (VALID_RATINGS as readonly string[]).includes(ratingRaw)
-      ? ratingRaw
-      : null;
-  if (appId === null || rating === null) {
-    redirect(`/dashboard?mygames_error=${encodeURIComponent("Invalid rating.")}#my-games`);
-  }
-
+export async function rateGame(appId: number, rating: string) {
+  if (!Number.isInteger(appId) || appId <= 0) return;
+  if (!(VALID_RATINGS as readonly string[]).includes(rating)) return;
+  const { supabase, user } = await authedClient();
   const { error } = await supabase.from("user_tried_games").upsert(
     { user_id: user.id, app_id: appId, rating, updated_at: new Date().toISOString() },
     { onConflict: "user_id,app_id" },
   );
-  if (error) {
-    redirect(`/dashboard?mygames_error=${encodeURIComponent(error.message)}#my-games`);
-  }
-  // No redirect: revalidate updates the page in place (game moves to "Reviewed")
-  // — faster + no full navigation than a redirect-with-banner.
+  if (error) return;
   revalidatePath("/dashboard");
 }
 
 /** Remove a game from "My games". */
-export async function untryGame(formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const appId = intField(formData, "app_id");
-  if (appId === null) {
-    redirect(`/dashboard?mygames_error=${encodeURIComponent("Invalid game.")}#my-games`);
-  }
-
+export async function untryGame(appId: number) {
+  if (!Number.isInteger(appId) || appId <= 0) return;
+  const { supabase, user } = await authedClient();
   const { error } = await supabase
     .from("user_tried_games")
     .delete()
     .eq("user_id", user.id)
     .eq("app_id", appId);
-  if (error) {
-    redirect(`/dashboard?mygames_error=${encodeURIComponent(error.message)}#my-games`);
-  }
+  if (error) return;
   revalidatePath("/dashboard");
-  redirect(`/dashboard?mygames_msg=${encodeURIComponent("Removed from your games.")}#my-games`);
 }
 
 /**

@@ -417,6 +417,15 @@ Migration 0004 applied by user; feature MERGED to main (`c5f877b`) + deployed. U
 - **WORKFLOW CHANGE (user pref):** dropped per-change feature branches — now committing straight to `main` (push → prod). Branches only for experimental work.
 - Verified tsc + build clean.
 
+### "My games" round 3 (2026-06-08) — OPTIMISTIC UI (instant buttons)
+User: every button feels slow. Root cause = each click is a server action (auth round-trip + DB write + full-page `revalidatePath` re-render). Fix = optimistic UI on the lightweight feedback actions (try/rate/remove): UI updates on click, the write runs in the background, reverts only on error.
+- **`app/dashboard/actions.ts`:** `tryGame`/`rateGame`/`untryGame` now take PLAIN ARGS (not FormData), no redirect, revalidate-only (`authedClient()` helper). Callable directly from client components.
+- **NEW `app/dashboard/rec-card.tsx`** (client): `RecCard` + `Breakdown`/`RecItem` types + `BREAKDOWN_PARTS` moved here. "+ I'll try this" is now a `useState`+`useTransition` button that hides the card INSTANTLY then calls `tryGame` (the explain button stays a server-action form — AI is inherently slow). 
+- **NEW `app/dashboard/my-games-panel.tsx`** (client): owns BOTH "My games" + "Reviewed" sections via `useOptimistic` (reducer: rate/remove). Rating instantly moves a game between sections; remove instantly drops it; server syncs via revalidate.
+- **`page.tsx`:** removed the inline `Breakdown`/`BREAKDOWN_PARTS`/`RecCard`/`RATING_OPTIONS`/`MyGameRow` + the two inline sections; now imports `RecCard` (renders the grid) and `<MyGamesPanel games={myGames} />`. Still server-computes `visibleRecs` (recItems minus triedSet, top 10). `mygames_*` banners/searchParams now dead (actions don't redirect) — left harmless.
+- Note: "Update recommendations" stays inherently heavy (re-runs the engine over ~2500 games) — optimistic UI can't shortcut real results; only its progress state could improve. User chose NOT to also trim per-action auth/revalidate this round.
+- Verified tsc + build (11 routes) clean. Committed straight to main.
+
 ## ▶ RESUME HERE (next session) — updated 2026-06-07
 **LIVE at https://play-next-five.vercel.app** · repo github.com/Ranavivcs/PlayNext (private).
 **Step-2 work MERGED to `main`** (PR #1, merge `77473c7`). **Current WIP:** the "My games" feedback feature is on branch **`my-games-feedback`** — code compiles (tsc+build clean) but **migration 0004 must be applied to Supabase + live click-through done before merge.**
