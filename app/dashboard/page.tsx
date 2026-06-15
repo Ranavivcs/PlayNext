@@ -114,7 +114,6 @@ export default async function DashboardPage({
     | null;
   const appliedFilters = runParams?.filters ?? {};
   const tasteMode = runParams?.tasteMode;
-  const tasteClusters = runParams?.tasteClusters;
 
   // Saved soft preferences (engine reads these on the next run). Every UI option
   // is a community tag, so selections live in preferred_tags.
@@ -269,17 +268,13 @@ export default async function DashboardPage({
             </p>
           )}
         </div>
-        {/* Adaptive-engine transparency: how the engine read your taste. */}
+        {/* Adaptive-engine transparency, in plain words: how it read your taste. */}
         {tasteMode && (
           <p className="mb-5 text-xs text-faint">
             {tasteMode === "clustered" ? (
-              <>
-                🧠 Adapted to your taste: your library spans{" "}
-                <span className="font-medium text-foreground">{tasteClusters} distinct clusters</span>,
-                so each pick is matched to your closest one.
-              </>
+              <>🎯 You play a few different kinds of games, so these picks match each of your tastes — not just your average.</>
             ) : (
-              <>🧠 Adapted to your taste: a focused library, matched to your overall taste.</>
+              <>🎯 These picks closely match the kind of games you play most.</>
             )}
           </p>
         )}
