@@ -174,6 +174,36 @@ export function kruskalMST(graph: SimGraph): SimEdge[] {
 }
 
 /**
+ * Threshold single-linkage clustering: build the kNN similarity graph over the
+ * given feature vectors, take its MST, and union only edges with distance
+ * ≤ `maxDist` (i.e. cosine ≥ 1 − maxDist). Games less similar than that split
+ * into separate clusters; orphans become singletons. Returns groups of node
+ * indices (into `features`). Used to cluster a user's OWN games — both to build
+ * per-cluster taste centroids and to measure taste diversity.
+ */
+export function clusterByMst(
+  features: GameFeatures[],
+  idf: Map<string, number>,
+  k: number,
+  maxDist: number,
+): number[][] {
+  if (features.length === 0) return [];
+  const graph = buildSimilarityGraph(features, idf, Math.min(k, features.length - 1));
+  const dsu = new DSU(graph.n);
+  for (const e of kruskalMST(graph)) {
+    if (e.weight <= maxDist) dsu.union(e.a, e.b);
+  }
+  const byRoot = new Map<number, number[]>();
+  for (let i = 0; i < graph.n; i++) {
+    const root = dsu.find(i);
+    const arr = byRoot.get(root);
+    if (arr) arr.push(i);
+    else byRoot.set(root, [i]);
+  }
+  return [...byRoot.values()];
+}
+
+/**
  * Single-linkage clustering via the MST: keep the lightest MST edges and drop
  * the heaviest, leaving `numClusters` connected components. Returns a cluster id
  * (0..C-1) per node. Cutting an MST's heaviest edge is exactly single-linkage.

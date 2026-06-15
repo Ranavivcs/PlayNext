@@ -109,8 +109,12 @@ export default async function DashboardPage({
     .maybeSingle();
 
   // Reflect the filters used on the last run so the controls stay in sync.
-  const appliedFilters =
-    (latestRec?.params as { filters?: HardFilters } | null)?.filters ?? {};
+  const runParams = latestRec?.params as
+    | { filters?: HardFilters; tasteMode?: string; tasteClusters?: number }
+    | null;
+  const appliedFilters = runParams?.filters ?? {};
+  const tasteMode = runParams?.tasteMode;
+  const tasteClusters = runParams?.tasteClusters;
 
   // Saved soft preferences (engine reads these on the next run). Every UI option
   // is a community tag, so selections live in preferred_tags.
@@ -257,7 +261,7 @@ export default async function DashboardPage({
       {/* HERO: the games come first. Controls live in a collapsed "Adjust" panel
           so they don't push the recommendations below the fold. */}
       <section className="mb-12">
-        <div className="mb-5 flex items-baseline justify-between gap-4">
+        <div className="mb-2 flex items-baseline justify-between gap-4">
           <h2 className="text-2xl font-bold tracking-tight">Recommended for you</h2>
           {latestRec && (
             <p className="shrink-0 text-xs text-faint">
@@ -265,6 +269,20 @@ export default async function DashboardPage({
             </p>
           )}
         </div>
+        {/* Adaptive-engine transparency: how the engine read your taste. */}
+        {tasteMode && (
+          <p className="mb-5 text-xs text-faint">
+            {tasteMode === "clustered" ? (
+              <>
+                🧠 Adapted to your taste: your library spans{" "}
+                <span className="font-medium text-foreground">{tasteClusters} distinct clusters</span>,
+                so each pick is matched to your closest one.
+              </>
+            ) : (
+              <>🧠 Adapted to your taste: a focused library, matched to your overall taste.</>
+            )}
+          </p>
+        )}
 
         <>
             <details

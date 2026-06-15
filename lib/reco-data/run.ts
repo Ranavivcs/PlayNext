@@ -5,7 +5,8 @@
 // RLS on the app path and is just an explicit value on the script path.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { recommend } from "../reco/recommend.ts";
+import { recommend, analyzeTasteDiversity } from "../reco/recommend.ts";
+import { buildIdf } from "../reco/vectorize.ts";
 import type { ScoredGame } from "../reco/types.ts";
 import { loadCatalog, loadFeaturesFor } from "./catalog.ts";
 import { applyHardFilters, type HardFilters } from "./filters.ts";
@@ -110,6 +111,13 @@ export async function generateRecommendations(opts: RunOptions): Promise<RunResu
 
   const candidates = applyHardFilters(catalog, filters).map((e) => e.features);
 
+  // ADAPTIVE TASTE: pick single-centroid vs clustered matching from how diverse
+  // this user's library is (idf built the same way the engine does, so the
+  // clustering is consistent). Focused taste → single; multi-genre → clustered
+  // (which our evaluation showed recovers diverse libraries far better).
+  const idf = buildIdf([...candidates, ...ownedFeatures]);
+  const diversity = analyzeTasteDiversity(ownedFeatures, idf);
+
   const results = recommend({
     candidates,
     owned,
@@ -119,6 +127,7 @@ export async function generateRecommendations(opts: RunOptions): Promise<RunResu
     preferredLength: user.preferredLength,
     dismissedAppIds,
     weights: user.weights,
+    tasteMode: diversity.mode,
     topK,
     mmrLambda,
     now,
@@ -139,6 +148,8 @@ export async function generateRecommendations(opts: RunOptions): Promise<RunResu
         topK: topK ?? null,
         mmrLambda: mmrLambda ?? null,
         seedAppIds: useSeeds ? seedAppIds : null,
+        tasteMode: diversity.mode,
+        tasteClusters: diversity.clusterCount,
       },
       results,
     );

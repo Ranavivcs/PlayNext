@@ -10,7 +10,7 @@ import {
   dijkstra,
   kruskalMST,
   mstClusters,
-  DSU,
+  clusterByMst,
   type SimGraph,
 } from "./graph.ts";
 
@@ -47,29 +47,56 @@ function buildTasteCentroids(
   };
   if (mode === "single" || ownedFeatures.length < 2) return single();
 
-  const graph = buildSimilarityGraph(
-    ownedFeatures,
-    idf,
-    Math.min(graphK, ownedFeatures.length - 1),
-  );
-  const dsu = new DSU(graph.n);
-  for (const e of kruskalMST(graph)) {
-    if (e.weight <= CLUSTER_MAX_DIST) dsu.union(e.a, e.b);
-  }
-  // Node i corresponds to ownedFeatures[i] (buildSimilarityGraph preserves order).
-  const membersByRoot = new Map<number, GameFeatures[]>();
-  for (let i = 0; i < graph.n; i++) {
-    const root = dsu.find(i);
-    const arr = membersByRoot.get(root);
-    if (arr) arr.push(ownedFeatures[i]);
-    else membersByRoot.set(root, [ownedFeatures[i]]);
-  }
+  // Cluster the owned games (single-linkage MST cut) and build one playtime-
+  // weighted centroid per cluster.
+  const groups = clusterByMst(ownedFeatures, idf, graphK, CLUSTER_MAX_DIST);
   const centroids: SparseVector[] = [];
-  for (const members of membersByRoot.values()) {
+  for (const idxs of groups) {
+    const members = idxs.map((i) => ownedFeatures[i]);
     const c = tasteVector(members, playtimeByApp, idf);
     if (c.size > 0) centroids.push(c);
   }
   return centroids.length > 0 ? centroids : single();
+}
+
+/** How diverse a user's taste is, from clustering their owned games. */
+export interface TasteDiversity {
+  /** Total taste clusters (incl. singletons). */
+  clusterCount: number;
+  /** Clusters with ≥2 games — distinct genre groupings. */
+  multiGameClusters: number;
+  /** Recommended taste representation: "clustered" when the library forms more
+   *  than one taste cluster (a single average would blur distinct groupings);
+   *  "single" only for an essentially monolithic library. */
+  mode: "single" | "clustered";
+}
+
+/**
+ * Analyze a user's taste diversity by clustering their owned games. A library
+ * with ≥2 multi-game clusters (e.g. shooters AND sports sims) is "diverse" and
+ * benefits from nearest-cluster (clustered) matching; an essentially single-
+ * cluster library is "focused" and is best served by one averaged centroid.
+ * Pure — the engine/bridge uses this to pick `tasteMode` per user.
+ */
+export function analyzeTasteDiversity(
+  ownedFeatures: GameFeatures[],
+  idf: Map<string, number>,
+  graphK: number = DEFAULT_GRAPH_K,
+  maxDist: number = CLUSTER_MAX_DIST,
+): TasteDiversity {
+  if (ownedFeatures.length < 2) {
+    return { clusterCount: ownedFeatures.length, multiGameClusters: 0, mode: "single" };
+  }
+  const groups = clusterByMst(ownedFeatures, idf, graphK, maxDist);
+  const multiGameClusters = groups.filter((g) => g.length >= 2).length;
+  return {
+    clusterCount: groups.length,
+    multiGameClusters,
+    // More than one cluster ⇒ distinct tastes a single centroid would blur, so
+    // match each candidate to the user's NEAREST cluster. One cluster ⇒ a
+    // monolithic, focused library where a single averaged centroid is best.
+    mode: groups.length >= 2 ? "clustered" : "single",
+  };
 }
 
 interface Candidate {
