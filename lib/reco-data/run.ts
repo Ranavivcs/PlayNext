@@ -150,6 +150,7 @@ export async function generateRecommendations(opts: RunOptions): Promise<RunResu
         seedAppIds: useSeeds ? seedAppIds : null,
         tasteMode: diversity.mode,
         tasteClusters: diversity.clusterCount,
+        tasteLabels: diversity.labels,
       },
       results,
     );

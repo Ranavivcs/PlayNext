@@ -69,6 +69,58 @@ export interface TasteDiversity {
    *  than one taste cluster (a single average would blur distinct groupings);
    *  "single" only for an essentially monolithic library. */
   mode: "single" | "clustered";
+  /** Plain-language names for the user's most distinctive RECURRING styles
+   *  (e.g. "Basketball", "Action Roguelike"), strongest first. Describes the
+   *  taste in the UI; independent of `mode` (which only picks the matching
+   *  strategy). Empty when nothing recurs (e.g. <2 owned games). */
+  labels: string[];
+}
+
+// A style must recur — appear on at least this many owned games — to be named,
+// so one-off niche tags don't surface as noise (e.g. "Photo Editing").
+const MIN_STYLE_COUNT = 2;
+
+// Broad/descriptive community tags that don't name a distinctive GAME STYLE
+// (nearly every library carries some). Excluded from taste labels so the names
+// read as real genres ("Roguelike", "Sports") not catch-alls ("Multiplayer").
+// Mirrors the eval-synth / eval-labels stoplist, so the recovery measured there
+// (≈100% coherent, ≈86% diverse) applies to this shipped function.
+const GENERIC_STYLE_TAGS = new Set([
+  "Singleplayer", "Multiplayer", "Co-op", "Online Co-Op", "Local Co-Op", "PvP", "PvE",
+  "Indie", "Casual", "Action", "Adventure", "Free to Play", "Early Access",
+  "Great Soundtrack", "Atmospheric", "Story Rich", "Open World", "Difficult", "Funny",
+  "Relaxing", "Family Friendly", "Controller", "Steam Achievements", "2D", "3D",
+  "Pixel Graphics", "Colorful", "Cute", "Masterpiece", "Classic", "Moddable",
+  "Massively Multiplayer", "Online", "Multiple Endings", "Choices Matter", "Nudity",
+  "Sexual Content", "Violent", "Gore", "Anime", "Cinematic", "Soundtrack", "Memes",
+]);
+
+/**
+ * Name a user's taste by its most characteristic recurring styles. Considers
+ * tags carried by ≥ MIN_STYLE_COUNT owned games (so one-off niche tags don't
+ * surface as noise), drops broad descriptive tags, then ranks by count × idf —
+ * how often the style recurs in the library weighted by how distinctive it is
+ * catalog-wide. Strongest first. Across many synthetic libraries this recovers
+ * the library's defining theme ≈100% of the time (vs ~10% for an idf-only rank,
+ * which gets distracted by rare co-tags); see scripts/eval-labels.ts.
+ * Pure/deterministic; empty when nothing recurs (e.g. <2 owned games). We label
+ * off the whole library rather than per MST cluster because real diverse
+ * libraries cluster into one generic blob + singletons, giving noisy names.
+ */
+export function describeStyles(ownedFeatures: GameFeatures[], idf: Map<string, number>): string[] {
+  const count = new Map<string, number>();
+  for (const f of ownedFeatures) {
+    for (const tag of f.tags) {
+      if (GENERIC_STYLE_TAGS.has(tag)) continue;
+      count.set(tag, (count.get(tag) ?? 0) + 1);
+    }
+  }
+  return [...count.entries()]
+    .filter(([, c]) => c >= MIN_STYLE_COUNT)
+    .map(([tag, c]) => ({ tag, c, score: c * (idf.get(`t:${tag}`) ?? 0) }))
+    // Recurrence × distinctiveness, then raw recurrence, then a name tie-break.
+    .sort((a, b) => b.score - a.score || b.c - a.c || a.tag.localeCompare(b.tag))
+    .map((x) => x.tag);
 }
 
 /**
@@ -85,7 +137,12 @@ export function analyzeTasteDiversity(
   maxDist: number = CLUSTER_MAX_DIST,
 ): TasteDiversity {
   if (ownedFeatures.length < 2) {
-    return { clusterCount: ownedFeatures.length, multiGameClusters: 0, mode: "single" };
+    return {
+      clusterCount: ownedFeatures.length,
+      multiGameClusters: 0,
+      mode: "single",
+      labels: describeStyles(ownedFeatures, idf),
+    };
   }
   const groups = clusterByMst(ownedFeatures, idf, graphK, maxDist);
   const multiGameClusters = groups.filter((g) => g.length >= 2).length;
@@ -96,6 +153,7 @@ export function analyzeTasteDiversity(
     // match each candidate to the user's NEAREST cluster. One cluster ⇒ a
     // monolithic, focused library where a single averaged centroid is best.
     mode: groups.length >= 2 ? "clustered" : "single",
+    labels: describeStyles(ownedFeatures, idf),
   };
 }
 

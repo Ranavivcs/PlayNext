@@ -110,10 +110,12 @@ export default async function DashboardPage({
 
   // Reflect the filters used on the last run so the controls stay in sync.
   const runParams = latestRec?.params as
-    | { filters?: HardFilters; tasteMode?: string; tasteClusters?: number }
+    | { filters?: HardFilters; tasteMode?: string; tasteClusters?: number; tasteLabels?: string[] }
     | null;
   const appliedFilters = runParams?.filters ?? {};
   const tasteMode = runParams?.tasteMode;
+  // Named styles for the detected taste clusters (strongest first). Show a few.
+  const tasteStyles = (runParams?.tasteLabels ?? []).filter(Boolean).slice(0, 3);
 
   // Saved soft preferences (engine reads these on the next run). Every UI option
   // is a community tag, so selections live in preferred_tags.
@@ -272,7 +274,17 @@ export default async function DashboardPage({
         {tasteMode && (
           <p className="mb-5 text-xs text-faint">
             {tasteMode === "clustered" ? (
-              <>🎯 You play a few different kinds of games, so these picks match each of your tastes — not just your average.</>
+              tasteStyles.length > 0 ? (
+                <>🎯 You play{" "}
+                  <span className="font-medium text-brand">{joinStyles(tasteStyles)}</span>{" "}
+                  games — so each pick is matched to one of your tastes, not just your average.</>
+              ) : (
+                <>🎯 You play a few different kinds of games, so these picks match each of your tastes — not just your average.</>
+              )
+            ) : tasteStyles.length > 0 ? (
+              <>🎯 Your taste centers on{" "}
+                <span className="font-medium text-brand">{joinStyles(tasteStyles.slice(0, 1))}</span>{" "}
+                — these picks closely match it.</>
             ) : (
               <>🎯 These picks closely match the kind of games you play most.</>
             )}
@@ -600,6 +612,12 @@ function formatPlaytime(minutes: number): string {
 
 function formatSyncedAt(iso: string): string {
   return new Date(iso).toLocaleString();
+}
+
+/** Join detected taste styles into a readable phrase: "A", "A and B", "A, B and C". */
+function joinStyles(styles: string[]): string {
+  if (styles.length <= 1) return styles[0] ?? "";
+  return `${styles.slice(0, -1).join(", ")} and ${styles[styles.length - 1]}`;
 }
 
 function DashboardCard({

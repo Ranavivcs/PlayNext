@@ -28,6 +28,13 @@ to try it (it leaves the recommendations grid and the next-best slides up), then
 👍 *Liked it* / 👎 *Not for me*. Liked games pull your future recommendations toward them;
 disliked ones are filtered out — a closed feedback loop that improves over time.
 
+**It adapts to the shape of your library.** PlayNext clusters your games to detect whether
+your taste is focused or spans several distinct styles, adjusts how it matches you
+accordingly, and tells you in plain words which styles it found — e.g. *"you play
+Survival, Sports and Competitive games."* (The style names are validated to recover a
+library's defining themes ≈100% of the time on a synthetic benchmark; see
+[scripts/eval-labels.ts](scripts/eval-labels.ts).)
+
 > CS final project. The point is that we own the algorithm and architecture — the
 > AI layer is one explainable component, not the engine.
 
