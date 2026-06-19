@@ -70,7 +70,12 @@ export const DIFFICULTY_VALUE_SET: ReadonlySet<string> = new Set(
 // (which users can't reason about), we offer a few friendly modes that each map
 // to a full weight set under the hood. `collab` is preserved separately (engine
 // multiplies it by 0 until CF ships).
-export type PresetKey = "balanced" | "similar" | "hidden" | "popular";
+//
+// "adaptive" is special: it has NO static weights — the engine tunes them per
+// run from the user's library shape (focused → content-heavy, diverse → more
+// graph). It's the DEFAULT for users who never pick a style; the resolved
+// weights are computed in lib/reco-data/run.ts (ADAPTIVE_WEIGHTS).
+export type PresetKey = "adaptive" | "balanced" | "similar" | "hidden" | "popular";
 
 interface PresetWeights {
   content: number;
@@ -84,8 +89,14 @@ export const WEIGHT_PRESETS: {
   value: PresetKey;
   label: string;
   description: string;
-  weights: PresetWeights;
+  /** Static weights, or undefined for "adaptive" (tuned per run). */
+  weights?: PresetWeights;
 }[] = [
+  {
+    value: "adaptive",
+    label: "Adaptive",
+    description: "Auto-tunes to your library — sharper focus for a niche taste, more discovery for a varied one.",
+  },
   {
     value: "balanced",
     label: "Balanced",
@@ -113,18 +124,28 @@ export const WEIGHT_PRESETS: {
 ];
 
 export const WEIGHT_PRESET_MAP = Object.fromEntries(
-  WEIGHT_PRESETS.map((p) => [p.value, p.weights]),
-) as Record<PresetKey, PresetWeights>;
+  WEIGHT_PRESETS.filter((p) => p.weights).map((p) => [p.value, p.weights]),
+) as Record<Exclude<PresetKey, "adaptive">, PresetWeights>;
 
 export const PRESET_VALUE_SET: ReadonlySet<string> = new Set(WEIGHT_PRESETS.map((p) => p.value));
-export const DEFAULT_PRESET: PresetKey = "balanced";
+// The product default for users who never pick a style: tune weights per library.
+export const DEFAULT_PRESET: PresetKey = "adaptive";
+// Fallback when a STORED numeric weight set matches no preset (a real manual set,
+// so pick the safe numeric default — not "adaptive", which has no static weights).
+const NUMERIC_FALLBACK_PRESET: PresetKey = "balanced";
 
-/** Best-matching preset for a stored weight set (so the UI can pre-select it). */
+/** True when a stored `weights` jsonb is the "adaptive" sentinel (no static weights). */
+export function isAdaptiveWeights(raw: unknown): boolean {
+  return !!raw && typeof raw === "object" && (raw as Record<string, unknown>).adaptive === true;
+}
+
+/** Best-matching preset for a stored numeric weight set (so the UI can pre-select it). */
 export function presetFromWeights(w: Partial<PresetWeights> | null | undefined): PresetKey {
-  if (!w) return DEFAULT_PRESET;
-  let best: PresetKey = DEFAULT_PRESET;
+  if (!w) return NUMERIC_FALLBACK_PRESET;
+  let best: PresetKey = NUMERIC_FALLBACK_PRESET;
   let bestDiff = Infinity;
   for (const p of WEIGHT_PRESETS) {
+    if (!p.weights) continue;
     const d =
       Math.abs((w.content ?? 0) - p.weights.content) +
       Math.abs((w.graph ?? 0) - p.weights.graph) +
@@ -136,5 +157,14 @@ export function presetFromWeights(w: Partial<PresetWeights> | null | undefined):
       best = p.value;
     }
   }
-  return bestDiff <= 0.02 ? best : DEFAULT_PRESET;
+  return bestDiff <= 0.02 ? best : NUMERIC_FALLBACK_PRESET;
+}
+
+/** Pre-select the right chip from the RAW stored weights jsonb: the adaptive
+ *  sentinel → "adaptive"; nothing stored → the default ("adaptive"); a numeric
+ *  set → its closest preset. */
+export function presetFromStored(raw: unknown): PresetKey {
+  if (isAdaptiveWeights(raw)) return "adaptive";
+  if (!raw) return DEFAULT_PRESET;
+  return presetFromWeights(raw as Partial<PresetWeights>);
 }

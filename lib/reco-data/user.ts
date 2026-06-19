@@ -20,9 +20,22 @@ export const DEFAULT_WEIGHTS: Weights = {
   graph: 0.25,
 };
 
+// "Adaptive" recommendation style: weights chosen per run from the user's
+// library shape (analyzeTasteDiversity.mode). Both keep popularity ≈ 0 per the
+// eval. FOCUSED libraries → content-dominant, minimal graph (graph slightly
+// hurts a single coherent taste). DIVERSE libraries → boost the Dijkstra graph
+// term (transitive similarity across taste clusters recovers them far better).
+export const ADAPTIVE_WEIGHTS: Record<"single" | "clustered", Weights> = {
+  single: { content: 0.6, preference: 0.2, popularity: 0.05, recency: 0.05, collab: 0.1, graph: 0.1 },
+  clustered: { content: 0.45, preference: 0.2, popularity: 0.05, recency: 0.05, collab: 0.1, graph: 0.4 },
+};
+
 export interface UserContext {
   owned: OwnedGame[];
   weights: Weights;
+  /** True when the user's style is "adaptive": ignore `weights` and let the run
+   *  compute them per library shape (ADAPTIVE_WEIGHTS). */
+  adaptiveWeights: boolean;
   preferredGenres: string[];
   preferredTags: string[];
   preferredLength: GameLength | null;
@@ -39,6 +52,13 @@ function coerceLength(raw: unknown): GameLength | null {
 }
 
 const PAGE = 1000;
+
+/** True when the stored weights jsonb means "adaptive": nothing stored (the
+ *  product default) or the explicit { adaptive: true } sentinel. */
+function isAdaptiveStored(raw: unknown): boolean {
+  if (raw == null) return true;
+  return typeof raw === "object" && (raw as Record<string, unknown>).adaptive === true;
+}
 
 /** Coerce the weights jsonb into a full Weights, defaulting any missing field. */
 function coerceWeights(raw: unknown): Weights {
@@ -121,6 +141,7 @@ export async function loadUserContext(
   return {
     owned,
     weights: coerceWeights(prefs?.weights),
+    adaptiveWeights: isAdaptiveStored(prefs?.weights),
     preferredGenres: (prefs?.preferred_genres as string[]) ?? [],
     preferredTags: (prefs?.preferred_tags as string[]) ?? [],
     preferredLength: coerceLength(prefs?.preferred_length),

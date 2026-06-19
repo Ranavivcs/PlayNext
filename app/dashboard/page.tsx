@@ -5,11 +5,9 @@ import { syncSteamLibrary, updateRecommendations, deleteAccount } from "./action
 import { RecCard, type RecItem, type Breakdown } from "./rec-card";
 import { MyGamesPanel } from "./my-games-panel";
 import type { HardFilters } from "@/lib/reco-data/filters";
-import { DEFAULT_WEIGHTS } from "@/lib/reco-data/user";
-import type { Weights } from "@/lib/reco/types";
 import {
   WEIGHT_PRESETS,
-  presetFromWeights,
+  presetFromStored,
   GENRE_OPTIONS,
   VIBE_OPTIONS,
   DIFFICULTY_OPTIONS,
@@ -129,11 +127,7 @@ export default async function DashboardPage({
   const savedGenres = tagList.filter((t) => (GENRE_OPTIONS as readonly string[]).includes(t));
   const savedVibe = tagList.find((t) => VIBE_OPTION_SET.has(t)) ?? "";
   const savedDifficulty = tagList.find((t) => DIFFICULTY_VALUE_SET.has(t)) ?? "";
-  const savedWeights: Weights = {
-    ...DEFAULT_WEIGHTS,
-    ...((prefsRow?.weights as Partial<Weights> | null) ?? {}),
-  };
-  const savedPreset = presetFromWeights(savedWeights);
+  const savedPreset = presetFromStored(prefsRow?.weights);
 
   let recItems: RecItem[] = [];
 

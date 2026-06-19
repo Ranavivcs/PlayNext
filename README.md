@@ -141,10 +141,12 @@ Then sign up and either:
 - skip Steam and **pick a few games you like** in the Adjust panel — recommendations
   come from those seeds.
 
-Pick a **recommendation style** (Balanced / More like my games / Discover hidden
-gems / Popular & new) in the Adjust panel to rebalance the ranking. Each card
-shows a colour-coded "why we picked this" bar (hover any part for a plain-English
-explanation), and **✨ Why this match?** generates a grounded one-line blurb.
+Pick a **recommendation style** in the Adjust panel to rebalance the ranking.
+The default, **Adaptive**, tunes the weights to your library shape (content-heavy
+for a focused taste, more graph similarity for a varied one); or choose a fixed
+style (Balanced / More like my games / Discover hidden gems / Popular & new). Each
+card shows a colour-coded "why we picked this" bar (hover any part for a
+plain-English explanation), and **✨ Why this match?** generates a grounded blurb.
 
 > Steam library import requires your Steam profile's **Game details** privacy to
 > be **Public** (separate from overall profile visibility).

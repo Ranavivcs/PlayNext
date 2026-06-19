@@ -10,7 +10,7 @@ import { buildIdf } from "../reco/vectorize.ts";
 import type { ScoredGame } from "../reco/types.ts";
 import { loadCatalog, loadFeaturesFor } from "./catalog.ts";
 import { applyHardFilters, type HardFilters } from "./filters.ts";
-import { loadUserContext } from "./user.ts";
+import { loadUserContext, ADAPTIVE_WEIGHTS } from "./user.ts";
 
 export interface RunOptions {
   client: SupabaseClient;
@@ -118,6 +118,11 @@ export async function generateRecommendations(opts: RunOptions): Promise<RunResu
   const idf = buildIdf([...candidates, ...ownedFeatures]);
   const diversity = analyzeTasteDiversity(ownedFeatures, idf);
 
+  // ADAPTIVE WEIGHTS: when the user's style is "Adaptive", tune the weights from
+  // the same library-shape signal — content-dominant for a focused library, more
+  // Dijkstra-graph for a diverse one. A manual preset keeps its saved weights.
+  const weights = user.adaptiveWeights ? ADAPTIVE_WEIGHTS[diversity.mode] : user.weights;
+
   const results = recommend({
     candidates,
     owned,
@@ -126,7 +131,7 @@ export async function generateRecommendations(opts: RunOptions): Promise<RunResu
     preferredTags: user.preferredTags,
     preferredLength: user.preferredLength,
     dismissedAppIds,
-    weights: user.weights,
+    weights,
     tasteMode: diversity.mode,
     topK,
     mmrLambda,
@@ -142,7 +147,8 @@ export async function generateRecommendations(opts: RunOptions): Promise<RunResu
       client,
       userId,
       {
-        weights: user.weights,
+        weights, // resolved (adaptive computes per library shape)
+        weightStyle: user.adaptiveWeights ? "adaptive" : "manual",
         filters,
         preferredLength: user.preferredLength,
         topK: topK ?? null,

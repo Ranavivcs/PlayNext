@@ -72,12 +72,18 @@ export async function syncSteamLibrary() {
   redirect(`/dashboard?sync_msg=${encodeURIComponent(`Imported ${result.count} games.`)}`);
 }
 
-/** Turn the chosen "style" preset into a full weight set, preserving collab. */
-function weightsFromPreset(formData: FormData, current: Partial<Weights> | null): Weights {
+/** The weights jsonb to STORE for the chosen style, preserving collab. "adaptive"
+ *  stores a sentinel { adaptive: true } — the engine tunes real weights per run
+ *  (lib/reco-data/run.ts); every other preset stores its static weight set. */
+function weightsPayloadFromPreset(
+  formData: FormData,
+  current: Partial<Weights> | null,
+): Record<string, unknown> {
   const raw = formData.get("preset");
   const key: PresetKey =
     typeof raw === "string" && PRESET_VALUE_SET.has(raw) ? (raw as PresetKey) : DEFAULT_PRESET;
   const collab = typeof current?.collab === "number" ? current.collab : DEFAULT_WEIGHTS.collab;
+  if (key === "adaptive") return { adaptive: true, collab };
   return { ...WEIGHT_PRESET_MAP[key], collab };
 }
 
@@ -124,7 +130,7 @@ export async function updateRecommendations(formData: FormData) {
     .select("weights")
     .eq("user_id", user.id)
     .maybeSingle();
-  const weights = weightsFromPreset(formData, existing?.weights as Partial<Weights> | null);
+  const weights = weightsPayloadFromPreset(formData, existing?.weights as Partial<Weights> | null);
 
   const { error: prefsError } = await supabase.from("user_preferences").upsert(
     {
