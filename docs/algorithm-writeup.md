@@ -34,7 +34,7 @@ breakdown that sums exactly to its score.
 | **Binary min-heap (priority queue)** | `lib/reco/heap.ts` | Backs Dijkstra |
 | **Dijkstra's shortest path (multi-source)** | `lib/reco/graph.ts` | Transitive "graph similarity" from owned games to candidates |
 | **k-nearest-neighbour graph** | `lib/reco/graph.ts` | Builds the game-similarity graph the above run on |
-| **Kruskal's MST + union-find (DSU)** | `lib/reco/graph.ts` | Single-linkage clustering → diversity & multi-centroid taste |
+| **Kruskal's MST + union-find (DSU)** | `lib/reco/graph.ts` | Single-linkage clustering → diversity, multi-centroid taste & the per-user adaptive engine |
 | **MMR (maximal marginal relevance)** | `lib/reco/mmr.ts` | Diversity re-ranking |
 | **Pairwise-logistic learning-to-rank** | `lib/reco/learn.ts` | Learn the score weights from feedback |
 
@@ -56,6 +56,12 @@ weight `= log(1 + minutes)` — heavily played games dominate, but lightly playe
 the diminishing returns of `log` stop a single 1,700-hour game from drowning everything else
 (`tasteVector`). This is the implicit-feedback signal: *time played* is a stronger, more honest
 preference signal than any star rating the user never gave.
+
+**Explicit feedback** complements this: when the user rates a game they tried on a **1–10** scale, a
+score of ≥6 folds that game into the same taste centroid with *synthetic* playtime scaled by the
+score (a 10 pulls ~3× harder than a 6 through the same `log` weighting), while low scores add no pull.
+So an explicit rating modulates the taste vector through exactly the same mechanism as playtime —
+the engine has a single, coherent notion of "taste strength."
 
 ### 2.3 The game-similarity graph + Dijkstra
 We build a **k-nearest-neighbour graph** over game vectors: each game links to its `k` most-similar
@@ -123,9 +129,33 @@ score = w_content·content + w_graph·graph + w_pref·preference
 ### 3.2 Multi-centroid taste (an evaluation-driven upgrade)
 The default taste is a single centroid. Evaluation (§5) showed this fails on *diverse* libraries: a
 user who plays basketball sims **and** roguelikes **and** shooters averages into a centroid that
-points at nothing. The `tasteMode: "clustered"` option clusters the user's owned games (reusing the
+points at nothing. The `tasteMode: "clustered"` mode clusters the user's owned games (reusing the
 MST/union-find machinery) and scores a candidate by its **nearest cluster**, not the blurry average
-(`buildTasteCentroids`). It is kept behind a flag — see the honest trade-off in §5.
+(`buildTasteCentroids`). Which mode to use is **chosen per user** by the adaptive engine (§3.3).
+
+### 3.3 The adaptive engine (per-user configuration)
+The evaluation (§5) showed there is no single best configuration — it is *taste-dependent*. Rather
+than pick one globally, the engine reads each user's library shape and configures itself:
+
+- **`analyzeTasteDiversity`** clusters the user's owned games (threshold single-linkage over the MST)
+  and reports how many distinct taste clusters the library forms.
+- **Taste mode** is then chosen automatically: a multi-cluster (diverse) library uses *clustered*
+  nearest-cluster matching; an essentially single-cluster (focused) library uses the single centroid.
+- **Weights** follow the same signal via an **"Adaptive" recommendation style** (the default): a
+  focused library leans content-dominant with minimal graph; a diverse one boosts the Dijkstra graph
+  term to exploit transitive similarity across clusters. A user who picks a manual style overrides
+  this — adaptation never silently fights an explicit choice.
+
+This is the **per-user adaptive weighting** that earlier evaluation flagged as the natural next step,
+now realized: the engine operationalizes the "optimal configuration is taste-dependent" finding
+directly, per user, from the structure of their own library.
+
+**Naming the taste.** The same clustering lets the UI describe a user's taste in plain words
+(`describeStyles`): it ranks the library's recurring tags by *count × idf* (minus a stop-list of
+generic tags) to surface the styles that actually characterize them — "you play Survival, Sports and
+Competitive games." This labeling was validated at scale (`scripts/eval-labels.ts`): across hundreds
+of synthetic libraries built from known themes it recovers the intended theme ~100% (coherent) / 86%
+(diverse), versus ~10% for a naive idf-only ranking that chases rare co-tags.
 
 ---
 
@@ -206,9 +236,11 @@ The Dijkstra graph term and MST clustering are **diversity/discovery mechanisms,
 - On *focused* tastes (synthetic, one tag) they slightly *hurt* — the single centroid is already
   sharp, so clustering fragments it and the graph drags in off-taste neighbours.
 
-So the optimal configuration is **taste-dependent**. This is why `tasteMode: "single"` remains the
-live default (it wins where we have statistical power) while clustered stays available for the
-diverse case.
+So the optimal configuration is **taste-dependent** — which is exactly why the live default is the
+**adaptive engine** (§3.3): instead of committing to one global setting, it picks single vs clustered
+matching (and a matching weight profile) *per user* from their library's diversity. Single still wins
+on focused tastes, clustered on diverse ones — the engine now makes that call automatically, per user,
+rather than us hard-coding one answer for everyone.
 
 ### 5.4 Learning-to-rank: what the machine learned
 
@@ -241,11 +273,25 @@ small popularity/recency only as quality-signal and discovery tie-breakers.
 ---
 
 ## 6. The AI layer (and why it never ranks)
-After ranking, `lib/ai/explain.ts` asks an LLM for a one-line "why this matches you," grounded
+Every recommendation already explains itself **without any AI**: a deterministic one-line reason is
+read straight from the score breakdown — the top contributing terms, named in plain words ("Matches
+your Survival & Co-op taste · linked to your favorites"). The engine's own numbers are the
+explanation.
+
+On top of that, `lib/ai/explain.ts` offers an *optional* LLM "why this matches you" blurb, grounded
 strictly in the passed facts (the game's genres/tags/reviews, the user's taste summary, and *which
 score term drove the rank*). It cannot invent game details, and it cannot change the order. This
 separation — `lib/reco` never imports `lib/ai` — is the architectural backbone: a real, explainable
 algorithm makes the decision; the AI only translates the decision into English.
+
+**A deliberate non-feature: no AI chat / RAG.** We considered a retrieval-augmented chat over the
+catalog and **decided against it.** A chat would make the LLM the face of the product, invite the
+"it's just an AI wrapper" reading that contradicts this project's thesis, and be the easiest thing to
+break (ask it "what should I play?" and the "AI never ranks" invariant is gone; or expose a
+hallucination, or a contradiction with the engine's order). Keeping the AI a grounded, fact-limited
+*explainer* is the more defensible engineering choice. The `game_embeddings` table (pgvector) remains
+reserved for a possible future *semantic similarity signal into the ranking engine* — evaluated like
+every other term — never a chat.
 
 ---
 
@@ -253,17 +299,18 @@ algorithm makes the decision; the AI only translates the decision into English.
 - **Single real user.** Robust aggregate numbers need more real libraries; synthetic users bridge the
   gap but are idealized.
 - **Genre orphans are unrecoverable** by any content method — a fundamental limit, not a bug.
-- **Per-user adaptive weighting** (choose single vs clustered, content vs graph, by the user's taste
-  diversity) is the natural next algorithmic step, now motivated by evidence.
+- **Per-user adaptive weighting** — *shipped* (§3.3): the engine now chooses single vs clustered
+  matching and a content-vs-graph weight profile per user from their library diversity. The remaining
+  step is *learning* those profiles from real feedback at scale rather than from the evaluation.
 - **Collaborative filtering** stays a stretch (needs many users).
-- **Semantic RAG chat** (embeddings + pgvector) would extend the *explanation* layer — strictly
-  scoped to discuss the recs the algorithm already chose, never to rank.
+- **AI chat / RAG — deliberately out of scope** (§6): it would undercut the thesis and is a defense
+  liability; the embeddings infrastructure is reserved instead for a future ranking *signal*.
 
 ---
 
 ## 8. Reproducibility
 ```
-# Unit tests (TF-IDF, graph, heap, MST, metrics, learner): 24/24
+# Unit tests (TF-IDF, graph, heap, MST, metrics, learner, taste, adaptive): 32/32
 node --test "tests/reco/**/*.test.ts"
 
 # Real-user leave-one-out evaluation
@@ -274,5 +321,8 @@ node --env-file=.env.local scripts/eval-synth.ts
 
 # Learning-to-rank training + held-out evaluation
 node --env-file=.env.local scripts/train-ltr.ts
+
+# Taste-label recovery (validates describeStyles at scale)
+node --env-file=.env.local scripts/eval-labels.ts
 ```
 All evaluation is read-only; the engine in `lib/reco/` is pure and deterministic.
