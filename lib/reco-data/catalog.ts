@@ -22,6 +22,10 @@ async function loadAll<T>(
   client: SupabaseClient,
   table: string,
   columns: string,
+  // Supabase's query-builder generics are impractical to spell out for a
+  // pass-through refine callback (a hand-written type trips TS2589 "excessively
+  // deep"), so scope a single `any` to this internal helper parameter.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   refine?: (q: any) => any,
 ): Promise<T[]> {
   const out: T[] = [];

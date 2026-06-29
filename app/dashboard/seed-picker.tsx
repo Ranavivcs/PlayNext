@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const MAX_SEEDS = 5;
 
@@ -18,17 +18,24 @@ export function SeedPicker() {
   const [results, setResults] = useState<Game[]>([]);
   const [selected, setSelected] = useState<Game[]>([]);
   const [loading, setLoading] = useState(false);
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const atCap = selected.length >= MAX_SEEDS;
 
-  useEffect(() => {
-    const q = query.trim();
+  // Debounced catalog search, driven by typing rather than an effect: reset the
+  // pending timer on each keystroke and fetch 250ms after the last one. Short
+  // queries clear the list without hitting the API.
+  function search(value: string) {
+    setQuery(value);
+    if (debounce.current) clearTimeout(debounce.current);
+    const q = value.trim();
     if (q.length < 2) {
       setResults([]);
+      setLoading(false);
       return;
     }
     setLoading(true);
-    const timer = setTimeout(async () => {
+    debounce.current = setTimeout(async () => {
       try {
         const res = await fetch(`/api/catalog/search?q=${encodeURIComponent(q)}`);
         const json = await res.json();
@@ -39,14 +46,23 @@ export function SeedPicker() {
         setLoading(false);
       }
     }, 250);
-    return () => clearTimeout(timer);
-  }, [query]);
+  }
+
+  // Cancel a pending search if the component unmounts mid-debounce.
+  useEffect(
+    () => () => {
+      if (debounce.current) clearTimeout(debounce.current);
+    },
+    [],
+  );
 
   function add(game: Game) {
     if (atCap || selected.some((s) => s.appId === game.appId)) return;
+    if (debounce.current) clearTimeout(debounce.current);
     setSelected((prev) => [...prev, game]);
     setQuery("");
     setResults([]);
+    setLoading(false);
   }
 
   function remove(appId: number) {
@@ -92,7 +108,7 @@ export function SeedPicker() {
           <input
             type="search"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => search(e.target.value)}
             placeholder="Search games…"
             className="field"
           />
