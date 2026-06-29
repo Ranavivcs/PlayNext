@@ -30,10 +30,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const games = (data ?? []).map((g) => ({
-    appId: g.app_id as number,
-    name: g.name as string,
-    headerImage: (g.header_image as string | null) ?? null,
-  }));
+  // The query picks the 12 most-popular matches; display them alphabetically so
+  // a base game and its sequels (shared name prefix) sit together in the list.
+  // `numeric` keeps "Portal 2" ahead of "Portal 10".
+  const games = (data ?? [])
+    .map((g) => ({
+      appId: g.app_id as number,
+      name: g.name as string,
+      headerImage: (g.header_image as string | null) ?? null,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   return NextResponse.json({ games });
 }
