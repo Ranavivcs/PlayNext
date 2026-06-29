@@ -21,6 +21,9 @@ export interface RecItem {
   name: string;
   headerImage: string | null;
   aiExplanation: string | null;
+  /** This game's tags that overlap the user's detected styles, strongest first
+   *  (≤2). Makes the "matches your games" reason game-specific. */
+  matchedStyles?: string[];
 }
 
 // Plain-English labels + tooltips — the internal term names (content, graph…)
@@ -50,13 +53,26 @@ const MATCH_PHRASES: Record<keyof Breakdown, string> = {
  * the engine's own numbers explain the pick; the AI blurb is the optional deeper
  * dive. Returns null only if nothing scored (shouldn't happen in practice).
  */
-function matchReason(breakdown: Breakdown): { text: string; color: string } | null {
+function matchReason(
+  breakdown: Breakdown,
+  matchedStyles?: string[],
+): { text: string; color: string } | null {
   const ranked = BREAKDOWN_PARTS
     .map((p) => ({ key: p.key, color: p.color, v: Math.max(0, breakdown[p.key]) }))
     .filter((p) => p.v > 0 && p.key !== "collab")
     .sort((a, b) => b.v - a.v);
   if (ranked.length === 0) return null;
-  const text = ranked.slice(0, 2).map((p) => MATCH_PHRASES[p.key]).join(" · ");
+  // For the content term, name the user's actual matching styles when we know
+  // them ("matches your Survival & Co-op taste") instead of the generic phrase —
+  // so cards read distinctly rather than repeating the same two terms reordered.
+  const phraseFor = (key: keyof Breakdown): string => {
+    if (key === "content" && matchedStyles && matchedStyles.length > 0) {
+      const styles = matchedStyles.slice(0, 2).join(" & ");
+      return `matches your ${styles} taste`;
+    }
+    return MATCH_PHRASES[key];
+  };
+  const text = ranked.slice(0, 2).map((p) => phraseFor(p.key)).join(" · ");
   return { text: text.charAt(0).toUpperCase() + text.slice(1), color: ranked[0].color };
 }
 
@@ -68,7 +84,7 @@ export function RecCard({ item, recId }: { item: RecItem; recId: string }) {
   if (added) return null;
 
   const total = BREAKDOWN_PARTS.reduce((s, p) => s + Math.max(0, item.breakdown[p.key]), 0);
-  const reason = matchReason(item.breakdown);
+  const reason = matchReason(item.breakdown, item.matchedStyles);
 
   return (
     <li className="rounded-xl border border-border bg-card shadow-[var(--shadow-card)] transition-transform duration-200 hover:-translate-y-1">

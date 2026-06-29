@@ -112,8 +112,10 @@ export default async function DashboardPage({
     | null;
   const appliedFilters = runParams?.filters ?? {};
   const tasteMode = runParams?.tasteMode;
-  // Named styles for the detected taste clusters (strongest first). Show a few.
-  const tasteStyles = (runParams?.tasteLabels ?? []).filter(Boolean).slice(0, 3);
+  // Detected taste styles, strongest first. The headline line shows a few; the
+  // full list drives the per-card "matches your X taste" reason.
+  const allTasteStyles = (runParams?.tasteLabels ?? []).filter(Boolean) as string[];
+  const tasteStyles = allTasteStyles.slice(0, 3);
 
   // Saved soft preferences (engine reads these on the next run). Every UI option
   // is a community tag, so selections live in preferred_tags.
@@ -201,7 +203,31 @@ export default async function DashboardPage({
   // Show the top 10 recommendations the user hasn't already tried. We persist a
   // deeper list (see updateRecommendations), so trying a game drops it out and
   // the next-best slides up to keep the grid full.
-  const visibleRecs = recItems.filter((r) => !triedSet.has(r.appId)).slice(0, 10);
+  const baseVisible = recItems.filter((r) => !triedSet.has(r.appId)).slice(0, 10);
+
+  // Per-card "why": name the user's styles each shown game matches (game tags ∩
+  // detected styles, strongest first). One small tag query for just these games;
+  // the style list is already persisted in the run params.
+  let visibleRecs = baseVisible;
+  const visibleAppIds = baseVisible.map((r) => r.appId);
+  if (visibleAppIds.length > 0 && allTasteStyles.length > 0) {
+    const { data: tagRows } = await supabase
+      .from("game_tags")
+      .select("app_id, tag")
+      .in("app_id", visibleAppIds);
+    const tagsByApp = new Map<number, Set<string>>();
+    for (const row of (tagRows ?? []) as { app_id: number; tag: string }[]) {
+      const set = tagsByApp.get(row.app_id) ?? new Set<string>();
+      set.add(row.tag);
+      tagsByApp.set(row.app_id, set);
+    }
+    visibleRecs = baseVisible.map((r) => {
+      const tags = tagsByApp.get(r.appId);
+      // Preserve the user's style ranking; take the top 2 the game shares.
+      const matchedStyles = tags ? allTasteStyles.filter((s) => tags.has(s)).slice(0, 2) : [];
+      return { ...r, matchedStyles };
+    });
+  }
 
   return (
     <main className="flex-1">
