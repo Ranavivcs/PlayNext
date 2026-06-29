@@ -25,10 +25,10 @@ export const DEFAULT_WEIGHTS: Weights = {
 // eval. FOCUSED libraries → content-dominant, minimal graph (graph slightly
 // hurts a single coherent taste). DIVERSE libraries → boost the Dijkstra graph
 // term (transitive similarity across taste clusters recovers them far better).
-export const ADAPTIVE_WEIGHTS: Record<"single" | "clustered", Weights> = {
+export const ADAPTIVE_WEIGHTS = {
   single: { content: 0.6, preference: 0.2, popularity: 0.05, recency: 0.05, collab: 0.1, graph: 0.1 },
   clustered: { content: 0.45, preference: 0.2, popularity: 0.05, recency: 0.05, collab: 0.1, graph: 0.4 },
-};
+} satisfies Record<"single" | "clustered", Weights>;
 
 export interface UserContext {
   owned: OwnedGame[];

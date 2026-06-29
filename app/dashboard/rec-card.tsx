@@ -34,6 +34,32 @@ const BREAKDOWN_PARTS: { key: keyof Breakdown; label: string; tip: string; color
   { key: "collab", label: "Similar players", tip: "Recommendations from players with similar taste (coming soon).", color: "bg-rose-400" },
 ];
 
+// Short, human phrase for why a game ranked — keyed to each score term.
+const MATCH_PHRASES: Record<keyof Breakdown, string> = {
+  content: "closely matches your games",
+  graph: "linked to your favorites",
+  preference: "fits your chosen genres",
+  popularity: "highly rated by players",
+  recency: "a recent release",
+  collab: "enjoyed by similar players",
+};
+
+/**
+ * Build a one-line "why this ranked" straight from the score breakdown — the top
+ * one or two contributing terms, in plain words. Deterministic and free (no AI):
+ * the engine's own numbers explain the pick; the AI blurb is the optional deeper
+ * dive. Returns null only if nothing scored (shouldn't happen in practice).
+ */
+function matchReason(breakdown: Breakdown): { text: string; color: string } | null {
+  const ranked = BREAKDOWN_PARTS
+    .map((p) => ({ key: p.key, color: p.color, v: Math.max(0, breakdown[p.key]) }))
+    .filter((p) => p.v > 0 && p.key !== "collab")
+    .sort((a, b) => b.v - a.v);
+  if (ranked.length === 0) return null;
+  const text = ranked.slice(0, 2).map((p) => MATCH_PHRASES[p.key]).join(" · ");
+  return { text: text.charAt(0).toUpperCase() + text.slice(1), color: ranked[0].color };
+}
+
 export function RecCard({ item, recId }: { item: RecItem; recId: string }) {
   // Optimistic: hide the card the instant the user adds it to "My games"; the
   // tryGame write + revalidate happen in the background (and remove it for real).
@@ -42,6 +68,7 @@ export function RecCard({ item, recId }: { item: RecItem; recId: string }) {
   if (added) return null;
 
   const total = BREAKDOWN_PARTS.reduce((s, p) => s + Math.max(0, item.breakdown[p.key]), 0);
+  const reason = matchReason(item.breakdown);
 
   return (
     <li className="rounded-xl border border-border bg-card shadow-[var(--shadow-card)] transition-transform duration-200 hover:-translate-y-1">
@@ -80,6 +107,13 @@ export function RecCard({ item, recId }: { item: RecItem; recId: string }) {
             </li>
           ))}
         </ul>
+
+        {reason && (
+          <p className="flex items-center gap-1.5 text-xs text-foreground/80">
+            <span className={`inline-block h-2 w-2 shrink-0 rounded-sm ${reason.color}`} />
+            {reason.text}
+          </p>
+        )}
 
         {item.aiExplanation && (
           <p className="border-t border-border pt-2.5 text-xs leading-relaxed text-muted-foreground">
