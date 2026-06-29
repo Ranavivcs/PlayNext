@@ -103,8 +103,8 @@ export default async function Home({
         <div className="grid gap-4 sm:grid-cols-2">
           <FeatureCard
             icon="🧮"
-            title="A real algorithm, not a guess"
-            body="We rank with actual math — how similar a game is to your library, plus the shortest paths between games in a similarity network. No mystery black box."
+            title="We do the math — you see why"
+            body="PlayNext measures how well each game fits you and ranks accordingly, then shows a clear breakdown of why it's there."
           />
           <FeatureCard
             icon="⏱️"
