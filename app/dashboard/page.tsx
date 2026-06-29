@@ -177,7 +177,7 @@ export default async function DashboardPage({
   // the feedback controls.
   const { data: triedRaw } = await supabase
     .from("user_tried_games")
-    .select("app_id, rating, games(name, header_image)")
+    .select("app_id, rating, score, games(name, header_image)")
     .eq("user_id", user.id)
     .order("updated_at", { ascending: false });
 
@@ -185,15 +185,19 @@ export default async function DashboardPage({
     const r = row as {
       app_id: number;
       rating: string | null;
+      score: number | null;
       games:
         | { name: string; header_image: string | null }
         | { name: string; header_image: string | null }[]
         | null;
     };
     const game = Array.isArray(r.games) ? r.games[0] : r.games;
+    // Prefer the graded score; map any legacy like/dislike onto the scale so old
+    // reviews still show as reviewed (like→8, dislike→3).
+    const legacy = r.rating === "like" || r.rating === "more" ? 8 : r.rating === "dislike" || r.rating === "less" ? 3 : null;
     return {
       appId: r.app_id,
-      rating: r.rating,
+      score: r.score ?? legacy,
       name: game?.name ?? `App ${r.app_id}`,
       headerImage: game?.header_image ?? null,
     };

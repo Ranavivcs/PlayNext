@@ -40,8 +40,22 @@ export interface UserContext {
   preferredTags: string[];
   preferredLength: GameLength | null;
   dismissedAppIds: number[];
-  /** Games the user liked / asked "more like this" — extra taste boosters. */
-  likedAppIds: number[];
+  /** Positively-rated games to fold into the taste vector, with the synthetic
+   *  playtime (minutes) implied by their score — higher score pulls harder. */
+  likedTaste: { appId: number; minutes: number }[];
+}
+
+// Graded review feedback (user_tried_games.score, 1–10). A score ≥ this folds the
+// game into the taste vector as a positive example; below it adds no boost.
+const LIKE_SCORE_THRESHOLD = 6;
+// Legacy binary ratings (pre-score) map onto the scale so old reviews still count.
+const LEGACY_SCORE: Record<string, number> = { like: 8, more: 8, dislike: 3, less: 3 };
+// Map a 1–10 score to synthetic taste playtime (minutes): 0 below the threshold,
+// then growing with the score (6→200 … 10→1000). Taste is weighted by
+// log(1+minutes), so a 10 pulls ~30% harder than a 6 without drowning a real,
+// heavily-played library.
+function scoreToTasteMinutes(score: number): number {
+  return score >= LIKE_SCORE_THRESHOLD ? (score - 5) * 200 : 0;
 }
 
 const LENGTHS: readonly GameLength[] = ["short", "medium", "long"];
@@ -112,7 +126,7 @@ export async function loadUserContext(
       .in("action", ["dismissed", "hidden"]),
     client
       .from("user_tried_games")
-      .select("app_id,rating")
+      .select("app_id,rating,score")
       .eq("user_id", userId),
   ]);
 
@@ -123,12 +137,16 @@ export async function loadUserContext(
   const prefs = prefsRes.data;
   const tried = triedRes.data ?? [];
 
-  // Liked games boost the taste vector.
-  const likedAppIds = [
-    ...new Set(
-      tried.filter((r) => r.rating === "like").map((r) => r.app_id as number),
-    ),
-  ];
+  // Positive feedback boosts the taste vector. Prefer the graded score; fall back
+  // to the legacy like/dislike. Higher score → stronger pull (scoreToTasteMinutes).
+  const likedTasteByApp = new Map<number, number>();
+  for (const r of tried) {
+    const score = typeof r.score === "number" ? r.score : LEGACY_SCORE[r.rating as string];
+    if (typeof score === "number" && score >= LIKE_SCORE_THRESHOLD) {
+      likedTasteByApp.set(r.app_id as number, scoreToTasteMinutes(score));
+    }
+  }
+  const likedTaste = [...likedTasteByApp].map(([appId, minutes]) => ({ appId, minutes }));
   // Exclude from results: explicit dismiss/hide, plus EVERY tried game (the user
   // is already trying it — don't re-recommend it — and disliked ones are negatives).
   const dismissedAppIds = [
@@ -146,6 +164,6 @@ export async function loadUserContext(
     preferredTags: (prefs?.preferred_tags as string[]) ?? [],
     preferredLength: coerceLength(prefs?.preferred_length),
     dismissedAppIds,
-    likedAppIds,
+    likedTaste,
   };
 }

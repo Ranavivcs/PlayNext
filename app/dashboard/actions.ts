@@ -297,8 +297,6 @@ export async function explainRec(formData: FormData) {
   redirect("/dashboard");
 }
 
-const VALID_RATINGS = ["like", "dislike"] as const;
-
 // These three are called directly (with args) from client components doing
 // OPTIMISTIC UI — the screen updates on click, these persist in the background.
 // So they take plain args (not FormData), don't redirect, and only revalidate so
@@ -325,13 +323,14 @@ export async function tryGame(appId: number) {
   revalidatePath("/dashboard");
 }
 
-/** Set (or change) the user's rating on a tried game — the feedback signal. */
-export async function rateGame(appId: number, rating: string) {
+/** Set (or change) the user's 1–10 score on a tried game — the feedback signal.
+ *  Score ≥ 6 boosts taste (stronger the higher); the engine reads it in user.ts. */
+export async function scoreGame(appId: number, score: number) {
   if (!Number.isInteger(appId) || appId <= 0) return;
-  if (!(VALID_RATINGS as readonly string[]).includes(rating)) return;
+  if (!Number.isInteger(score) || score < 1 || score > 10) return;
   const { supabase, user } = await authedClient();
   const { error } = await supabase.from("user_tried_games").upsert(
-    { user_id: user.id, app_id: appId, rating, updated_at: new Date().toISOString() },
+    { user_id: user.id, app_id: appId, score, updated_at: new Date().toISOString() },
     { onConflict: "user_id,app_id" },
   );
   if (error) return;

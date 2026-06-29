@@ -80,20 +80,17 @@ export async function generateRecommendations(opts: RunOptions): Promise<RunResu
 
   const useSeeds = Array.isArray(seedAppIds) && seedAppIds.length > 0;
 
-  // Synthetic playtime for a liked / "more like this" game so it contributes to
-  // the taste vector (weight = log(1 + minutes)) at roughly the strength of a
-  // moderately-played owned game, without drowning a genuinely heavy library.
-  const LIKED_TASTE_MINUTES = 600;
-
   // Seed mode: taste comes from the picked games (flat playtime → equal weight),
   // ignoring the Steam library. Otherwise taste comes from the owned library PLUS
-  // any games the user liked / asked "more like this" (explicit positive feedback).
+  // any games the user rated positively (explicit feedback): each contributes
+  // synthetic playtime scaled by its 1–10 score (see user.ts likedTaste), so a
+  // higher score pulls taste harder, without drowning a genuinely heavy library.
   const owned = useSeeds
     ? seedAppIds.map((appId) => ({ appId, playtimeMinutes: 60 }))
     : (() => {
         const byApp = new Map(user.owned.map((o) => [o.appId, o]));
-        for (const appId of user.likedAppIds) {
-          if (!byApp.has(appId)) byApp.set(appId, { appId, playtimeMinutes: LIKED_TASTE_MINUTES });
+        for (const { appId, minutes } of user.likedTaste) {
+          if (!byApp.has(appId)) byApp.set(appId, { appId, playtimeMinutes: minutes });
         }
         return [...byApp.values()];
       })();

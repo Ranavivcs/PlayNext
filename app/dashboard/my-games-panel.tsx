@@ -1,42 +1,37 @@
 "use client";
 
 import { useOptimistic, useTransition } from "react";
-import { rateGame, untryGame } from "./actions";
+import { scoreGame, untryGame } from "./actions";
 
 export interface TriedGame {
   appId: number;
-  rating: string | null;
+  /** 1–10 review score, or null until the user rates it. */
+  score: number | null;
   name: string;
   headerImage: string | null;
 }
 
-// Two-way feedback: like → taste boost; dislike → excluded + nudged away.
-const RATING_OPTIONS: { value: string; label: string }[] = [
-  { value: "like", label: "👍 Liked it" },
-  { value: "dislike", label: "👎 Not for me" },
-];
-
-type Action = { type: "rate"; appId: number; rating: string } | { type: "remove"; appId: number };
+type Action = { type: "score"; appId: number; score: number } | { type: "remove"; appId: number };
 
 function reducer(state: TriedGame[], action: Action): TriedGame[] {
   switch (action.type) {
-    case "rate":
-      return state.map((g) => (g.appId === action.appId ? { ...g, rating: action.rating } : g));
+    case "score":
+      return state.map((g) => (g.appId === action.appId ? { ...g, score: action.score } : g));
     case "remove":
       return state.filter((g) => g.appId !== action.appId);
   }
 }
 
 export function MyGamesPanel({ games }: { games: TriedGame[] }) {
-  // Optimistic: rating/removing updates the screen instantly; the server write +
+  // Optimistic: scoring/removing updates the screen instantly; the server write +
   // revalidate happen in the background and re-sync on the next render.
   const [optimistic, apply] = useOptimistic(games, reducer);
   const [, startTransition] = useTransition();
 
-  const rate = (appId: number, rating: string) =>
+  const score = (appId: number, value: number) =>
     startTransition(() => {
-      apply({ type: "rate", appId, rating });
-      void rateGame(appId, rating);
+      apply({ type: "score", appId, score: value });
+      void scoreGame(appId, value);
     });
   const remove = (appId: number) =>
     startTransition(() => {
@@ -44,8 +39,8 @@ export function MyGamesPanel({ games }: { games: TriedGame[] }) {
       void untryGame(appId);
     });
 
-  const toReview = optimistic.filter((g) => !g.rating);
-  const reviewed = optimistic.filter((g) => g.rating);
+  const toReview = optimistic.filter((g) => g.score == null);
+  const reviewed = optimistic.filter((g) => g.score != null);
 
   return (
     <>
@@ -53,15 +48,16 @@ export function MyGamesPanel({ games }: { games: TriedGame[] }) {
         <div className="mb-5">
           <h2 className="text-2xl font-bold tracking-tight">My games</h2>
           <p className="mt-1 text-sm text-faint">
-            Games you decided to try — tell us how they landed. Your verdict shapes future picks
-            (hit <span className="font-medium text-foreground">Update recommendations</span> to
-            apply): 👍 pulls recs toward it, 👎 filters it out.
+            Games you decided to try — score each <span className="font-medium text-foreground">1–10</span>.
+            Your verdict shapes future picks (hit{" "}
+            <span className="font-medium text-foreground">Update recommendations</span> to apply): a
+            high score pulls recs toward it, a low one keeps it out.
           </p>
         </div>
         {toReview.length > 0 ? (
           <ul className="grid gap-3 sm:grid-cols-2">
             {toReview.map((g) => (
-              <GameRow key={g.appId} game={g} onRate={rate} onRemove={remove} />
+              <GameRow key={g.appId} game={g} onScore={score} onRemove={remove} />
             ))}
           </ul>
         ) : (
@@ -78,12 +74,12 @@ export function MyGamesPanel({ games }: { games: TriedGame[] }) {
           <div className="mb-5">
             <h2 className="text-2xl font-bold tracking-tight">Reviewed games</h2>
             <p className="mt-1 text-sm text-faint">
-              Your verdicts. Change one any time — it&apos;s applied on the next Update.
+              Your scores. Change one any time — it&apos;s applied on the next Update.
             </p>
           </div>
           <ul className="grid gap-3 sm:grid-cols-2">
             {reviewed.map((g) => (
-              <GameRow key={g.appId} game={g} onRate={rate} onRemove={remove} />
+              <GameRow key={g.appId} game={g} onScore={score} onRemove={remove} />
             ))}
           </ul>
         </section>
@@ -92,15 +88,23 @@ export function MyGamesPanel({ games }: { games: TriedGame[] }) {
   );
 }
 
+/** Fill color conveys the verdict: low = rose, mid = amber, high = emerald. */
+function fillColor(score: number): string {
+  if (score >= 7) return "bg-emerald-400";
+  if (score >= 4) return "bg-amber-400";
+  return "bg-rose-400";
+}
+
 function GameRow({
   game,
-  onRate,
+  onScore,
   onRemove,
 }: {
   game: TriedGame;
-  onRate: (appId: number, rating: string) => void;
+  onScore: (appId: number, score: number) => void;
   onRemove: (appId: number) => void;
 }) {
+  const score = game.score ?? 0;
   return (
     <li className="flex gap-3 rounded-xl border border-border bg-card p-3 shadow-[var(--shadow-card)]">
       {game.headerImage ? (
@@ -121,21 +125,24 @@ function GameRow({
             ×
           </button>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {RATING_OPTIONS.map((r) => (
-            <button
-              key={r.value}
-              type="button"
-              onClick={() => onRate(game.appId, r.value)}
-              className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
-                game.rating === r.value
-                  ? "border-brand bg-brand/15 text-brand"
-                  : "border-border text-muted-foreground hover:border-brand/60 hover:text-foreground"
-              }`}
-            >
-              {r.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <div className="flex gap-0.5" role="group" aria-label="Score 1 to 10">
+            {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+              <button
+                key={n}
+                type="button"
+                aria-label={`${n} out of 10`}
+                title={`${n}/10`}
+                onClick={() => onScore(game.appId, n)}
+                className={`h-4 w-3 rounded-sm transition ${
+                  score >= n ? fillColor(score) : "bg-[var(--bar-track)] hover:bg-brand/40"
+                }`}
+              />
+            ))}
+          </div>
+          <span className="shrink-0 text-xs font-medium tabular-nums text-foreground">
+            {game.score != null ? `${game.score}/10` : "Rate"}
+          </span>
         </div>
       </div>
     </li>

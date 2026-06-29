@@ -24,9 +24,10 @@ mapping of each classic algorithm to the code are in
    finds similar ones. Both paths feed the same engine (picked games become the taste seed).
 
 **It learns from your feedback.** Add a recommended game to **My games** when you decide
-to try it (it leaves the recommendations grid and the next-best slides up), then rate it
-👍 *Liked it* / 👎 *Not for me*. Liked games pull your future recommendations toward them;
-disliked ones are filtered out — a closed feedback loop that improves over time.
+to try it (it leaves the recommendations grid and the next-best slides up), then score it
+**1–10**. A high score pulls your future recommendations toward that game — harder the
+higher it is — while low-scored (and already-tried) games are kept out: a closed feedback
+loop that improves over time.
 
 **It adapts to the shape of your library.** PlayNext clusters your games to detect whether
 your taste is focused or spans several distinct styles, adjusts how it matches you
