@@ -468,6 +468,11 @@ Replaced binary 👍/👎 with a **1–10 integer** score (no decimals — false
 - **UI (`my-games-panel.tsx`):** `TriedGame.rating` → `score:number|null`; the 👍/👎 chips → a clickable **1–10 segment meter** (fills rose<4 / amber<7 / emerald≥7, shows "7/10"), optimistic as before. `page.tsx` selects `score`, maps legacy `rating`→score for display (like→8, dislike→3) so old reviews stay "Reviewed".
 - **NOT yet:** logged-in click-through (score a game → meter persists → Update nudges taste). Effect is a nudge, not a reshuffle, on a large library.
 
+### UI polish (2026-06-29, user feedback after live check)
+- **Score meter hover preview** (`my-games-panel.tsx`): hovering a box fills the meter up to it and the "/10" label previews that value (local `hover` state, reverts on mouse-leave) — so you see what you'd set before clicking. Native `title` kept too.
+- **"Why this match?" button**: dropped the leading ✨ (user disliked it). The AI-blurb ✨ prefix is unchanged.
+- **Landing top bar**: removed the duplicate top-right "Go to dashboard" — when logged in the nav is brand-only (the hero keeps the CTA); logged-out still shows Sign in / Get started up top.
+
 ### Parked: feedback "reasons" → negative preferences (DECIDED with user 2026-06-29)
 User asked whether to also collect a reason (free-text or preset) when a user rates a rec good/bad. DECIDED: **park it** — a reason only earns its place if it changes ranking, else it's cosmetic data and a defense liability ("what does it do?" → "nothing"). **Free-text rejected** (needs an LLM to parse → pushes toward "AI does the work", off-thesis + defense risk). The defensible version, if revived: **structured preset reasons → a NEGATIVE-preference term** — symmetric to the existing positive `preferenceScore` (penalize candidates carrying tags the user explicitly rejected, e.g. "not my genre: Shooter"). Keeps `lib/reco` pure (new input + penalty term). Honest caveat: with ~1 real user it demonstrates a mechanism more than it moves the needle. Documented future extension, not built.
 

@@ -27,22 +27,18 @@ export default async function Home({
           <span className="brand-logo">▶</span>
           Play<span className="brand-grad">Next</span>
         </span>
-        <div className="flex items-center gap-2">
-          {user ? (
-            <Link href="/dashboard" className="btn btn-primary btn-sm">
-              Go to dashboard
+        {/* Logged in → the hero already has the dashboard CTA, so keep the top bar
+            clean (brand only). Logged out → quick sign-in / sign-up up top. */}
+        {!user && (
+          <div className="flex items-center gap-2">
+            <Link href="/login" className="btn btn-ghost btn-sm">
+              Sign in
             </Link>
-          ) : (
-            <>
-              <Link href="/login" className="btn btn-ghost btn-sm">
-                Sign in
-              </Link>
-              <Link href="/signup" className="btn btn-primary btn-sm">
-                Get started
-              </Link>
-            </>
-          )}
-        </div>
+            <Link href="/signup" className="btn btn-primary btn-sm">
+              Get started
+            </Link>
+          </div>
+        )}
       </nav>
 
       {/* hero */}

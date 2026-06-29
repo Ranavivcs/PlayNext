@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { scoreGame, untryGame } from "./actions";
 
 export interface TriedGame {
@@ -104,7 +104,11 @@ function GameRow({
   onScore: (appId: number, score: number) => void;
   onRemove: (appId: number) => void;
 }) {
-  const score = game.score ?? 0;
+  // Preview the score under the cursor as you hover the meter; falls back to the
+  // saved score when not hovering.
+  const [hover, setHover] = useState<number | null>(null);
+  const shown = hover ?? game.score; // value to display + fill to
+  const fill = shown ?? 0;
   return (
     <li className="flex gap-3 rounded-xl border border-border bg-card p-3 shadow-[var(--shadow-card)]">
       {game.headerImage ? (
@@ -126,22 +130,28 @@ function GameRow({
           </button>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex gap-0.5" role="group" aria-label="Score 1 to 10">
+          <div
+            className="flex gap-0.5"
+            role="group"
+            aria-label="Score 1 to 10"
+            onMouseLeave={() => setHover(null)}
+          >
             {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
               <button
                 key={n}
                 type="button"
-                aria-label={`${n} out of 10`}
+                aria-label={`Rate ${n} out of 10`}
                 title={`${n}/10`}
+                onMouseEnter={() => setHover(n)}
                 onClick={() => onScore(game.appId, n)}
                 className={`h-4 w-3 rounded-sm transition ${
-                  score >= n ? fillColor(score) : "bg-[var(--bar-track)] hover:bg-brand/40"
+                  fill >= n ? fillColor(fill) : "bg-[var(--bar-track)] hover:bg-brand/40"
                 }`}
               />
             ))}
           </div>
           <span className="shrink-0 text-xs font-medium tabular-nums text-foreground">
-            {game.score != null ? `${game.score}/10` : "Rate"}
+            {shown != null ? `${shown}/10` : "Rate"}
           </span>
         </div>
       </div>

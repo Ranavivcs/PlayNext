@@ -156,7 +156,7 @@ export function RecCard({ item, recId }: { item: RecItem; recId: string }) {
               <input type="hidden" name="rec_id" value={recId} />
               <input type="hidden" name="app_id" value={item.appId} />
               <SubmitButton className="btn btn-ghost btn-sm w-full" pendingText="Thinking…">
-                ✨ Why this match?
+                Why this match?
               </SubmitButton>
             </form>
           )}
