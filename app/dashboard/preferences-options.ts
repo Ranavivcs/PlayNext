@@ -135,12 +135,12 @@ export const DEFAULT_PRESET: PresetKey = "adaptive";
 const NUMERIC_FALLBACK_PRESET: PresetKey = "balanced";
 
 /** True when a stored `weights` jsonb is the "adaptive" sentinel (no static weights). */
-export function isAdaptiveWeights(raw: unknown): boolean {
+function isAdaptiveWeights(raw: unknown): boolean {
   return !!raw && typeof raw === "object" && (raw as Record<string, unknown>).adaptive === true;
 }
 
 /** Best-matching preset for a stored numeric weight set (so the UI can pre-select it). */
-export function presetFromWeights(w: Partial<PresetWeights> | null | undefined): PresetKey {
+function presetFromWeights(w: Partial<PresetWeights> | null | undefined): PresetKey {
   if (!w) return NUMERIC_FALLBACK_PRESET;
   let best: PresetKey = NUMERIC_FALLBACK_PRESET;
   let bestDiff = Infinity;

@@ -17,11 +17,6 @@ const PAGE = 1000;
 const CATALOG_TTL_MS = 5 * 60 * 1000;
 let catalogCache: { at: number; data: CatalogEntry[] } | null = null;
 
-/** Clear the cached catalog (e.g. right after an enrichment run). */
-export function invalidateCatalogCache(): void {
-  catalogCache = null;
-}
-
 /** Page through a table/select, returning every row. */
 async function loadAll<T>(
   client: SupabaseClient,

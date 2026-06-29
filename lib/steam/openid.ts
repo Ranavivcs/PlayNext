@@ -8,7 +8,7 @@ const STEAM_OPENID_URL = "https://steamcommunity.com/openid/login";
 const OPENID_NS = "http://specs.openid.net/auth/2.0";
 const IDENTIFIER_SELECT = "http://specs.openid.net/auth/2.0/identifier_select";
 
-export const STEAM_RETURN_PATH = "/api/steam/callback";
+const STEAM_RETURN_PATH = "/api/steam/callback";
 
 /**
  * URL to send the browser to so the user can authenticate with Steam.

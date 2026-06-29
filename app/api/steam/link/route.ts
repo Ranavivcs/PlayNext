@@ -1,11 +1,11 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { buildSteamLoginUrl } from "@/lib/steam/openid";
 import { getOrigin } from "@/lib/origin";
 
 // Starts the Steam OpenID flow. proxy.ts already requires auth for /api/steam/*,
 // so this user check is a defensive fallback.
-export async function GET(_request: NextRequest) {
+export async function GET() {
   const origin = await getOrigin();
   const supabase = await createClient();
   const {
