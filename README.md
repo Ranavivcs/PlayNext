@@ -47,9 +47,9 @@ library's defining themes ≈100% of the time on a synthetic benchmark; see
 | 2 | Steam linking (OpenID) + library ingest | ✅ Done |
 | 3 | Recommendation engine + metadata enrichment + games-first dashboard (hard filters, soft preferences, seed-based "pick games" path) | ✅ Done |
 | 4 | AI explanations — per-game "why this match?" (Claude Haiku, grounded, explains-never-ranks) | ✅ Done |
-| 5 | Embeddings (pgvector) + semantic RAG chat ("ask about these recs") | ⏳ Under review |
+| 5 | Semantic RAG chat | ❌ Decided against — would undermine the algorithm thesis (AI explains, never ranks) |
 | 6 | Defend the project — 2-hour live defense; see [docs/defense-prep.md](docs/defense-prep.md) | ⏳ Prep |
-| — | Collaborative filtering · classic-CS-algorithm integration | ⏳ Stretch |
+| — | Collaborative filtering · embeddings as an engine signal | ⏳ Stretch |
 
 Shared catalog: **~2,500 enriched games** (SteamSpy top-owned + Steam `appdetails` —
 genres, community tags, categories, platforms, reviews, release date).
