@@ -28,10 +28,7 @@ export default async function DashboardPage({
     sync_error?: string;
     recs_msg?: string;
     recs_error?: string;
-    account_msg?: string;
     account_error?: string;
-    mygames_msg?: string;
-    mygames_error?: string;
   }>;
 }) {
   const supabase = await createClient();
@@ -55,10 +52,7 @@ export default async function DashboardPage({
     sync_error,
     recs_msg,
     recs_error,
-    account_msg,
     account_error,
-    mygames_msg,
-    mygames_error,
   } = await searchParams;
 
   const { data: steam } = await supabase
@@ -270,17 +264,8 @@ export default async function DashboardPage({
             Recommendations failed: {recs_error}
           </p>
         )}
-        {account_msg && (
-          <p className="mb-4 rounded-lg banner-ok px-3 py-2 text-sm">{account_msg}</p>
-        )}
         {account_error && (
           <p className="mb-4 rounded-lg banner-err px-3 py-2 text-sm">{account_error}</p>
-        )}
-        {mygames_msg && (
-          <p className="mb-4 rounded-lg banner-ok px-3 py-2 text-sm">{mygames_msg}</p>
-        )}
-        {mygames_error && (
-          <p className="mb-4 rounded-lg banner-err px-3 py-2 text-sm">{mygames_error}</p>
         )}
 
       {/* HERO: the games come first. Controls live in a collapsed "Adjust" panel
