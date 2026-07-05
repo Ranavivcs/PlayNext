@@ -1,22 +1,21 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { signOut } from "../login/actions";
-import { syncSteamLibrary, updateRecommendations, deleteAccount } from "./actions";
 import { RecCard, type RecItem, type Breakdown } from "./rec-card";
 import { MyGamesPanel } from "./my-games-panel";
 import type { HardFilters } from "@/lib/reco-data/filters";
 import {
-  WEIGHT_PRESETS,
   presetFromStored,
   GENRE_OPTIONS,
-  VIBE_OPTIONS,
-  DIFFICULTY_OPTIONS,
   VIBE_OPTION_SET,
   DIFFICULTY_VALUE_SET,
 } from "./preferences-options";
-import { GenrePicker } from "./preference-chips";
-import { SeedPicker } from "./seed-picker";
-import { SubmitButton } from "@/components/submit-button";
+import { formatSyncedAt } from "./format";
+import { DashboardHeader } from "./dashboard-header";
+import { Banners } from "./dashboard-banners";
+import { TasteLine } from "./taste-line";
+import { AdjustPanel } from "./adjust-panel";
+import { SetupCards, type SteamAccount } from "./setup-cards";
+import { DangerZone } from "./danger-zone";
 
 export default async function DashboardPage({
   searchParams,
@@ -230,43 +229,17 @@ export default async function DashboardPage({
   return (
     <main className="flex-1">
       <div className="mx-auto w-full max-w-5xl px-6 py-7">
-        <header className="panel mb-7 flex items-center justify-between px-5 py-3.5">
-          <span className="brand">
-            <span className="brand-logo">▶</span>
-            Play<span className="brand-grad">Next</span>
-          </span>
-          <div className="flex items-center gap-3">
-            <div className="hidden text-right sm:block">
-              <p className="text-sm font-medium leading-tight">{displayName}</p>
-              <p className="text-xs leading-tight text-faint">{user.email}</p>
-            </div>
-            <form action={signOut}>
-              <button type="submit" className="btn btn-ghost btn-sm">
-                Sign out
-              </button>
-            </form>
-          </div>
-        </header>
+        <DashboardHeader displayName={displayName} email={user.email} />
 
-        {steam_linked && (
-          <p className="mb-4 rounded-lg banner-ok px-3 py-2 text-sm">Steam account linked.</p>
-        )}
-        {steam_error && (
-          <p className="mb-4 rounded-lg banner-err px-3 py-2 text-sm">{steam_error}</p>
-        )}
-        {sync_msg && <p className="mb-4 rounded-lg banner-ok px-3 py-2 text-sm">{sync_msg}</p>}
-        {sync_error && (
-          <p className="mb-4 rounded-lg banner-err px-3 py-2 text-sm">Sync failed: {sync_error}</p>
-        )}
-        {recs_msg && <p className="mb-4 rounded-lg banner-ok px-3 py-2 text-sm">{recs_msg}</p>}
-        {recs_error && (
-          <p className="mb-4 rounded-lg banner-err px-3 py-2 text-sm">
-            Recommendations failed: {recs_error}
-          </p>
-        )}
-        {account_error && (
-          <p className="mb-4 rounded-lg banner-err px-3 py-2 text-sm">{account_error}</p>
-        )}
+        <Banners
+          steam_linked={steam_linked}
+          steam_error={steam_error}
+          sync_msg={sync_msg}
+          sync_error={sync_error}
+          recs_msg={recs_msg}
+          recs_error={recs_error}
+          account_error={account_error}
+        />
 
       {/* HERO: the games come first. Controls live in a collapsed "Adjust" panel
           so they don't push the recommendations below the fold. */}
@@ -279,157 +252,18 @@ export default async function DashboardPage({
             </p>
           )}
         </div>
-        {/* Adaptive-engine transparency, in plain words: how it read your taste. */}
-        {tasteMode && (
-          <p className="mb-5 text-xs text-faint">
-            {tasteMode === "clustered" ? (
-              tasteStyles.length > 0 ? (
-                <>🎯 You play{" "}
-                  <span className="font-medium text-brand">{joinStyles(tasteStyles)}</span>{" "}
-                  games — so each pick is matched to one of your tastes, not just your average.</>
-              ) : (
-                <>🎯 You play a few different kinds of games, so these picks match each of your tastes — not just your average.</>
-              )
-            ) : tasteStyles.length > 0 ? (
-              <>🎯 Your taste centers on{" "}
-                <span className="font-medium text-brand">{joinStyles(tasteStyles.slice(0, 1))}</span>{" "}
-                — these picks closely match it.</>
-            ) : (
-              <>🎯 These picks closely match the kind of games you play most.</>
-            )}
-          </p>
-        )}
+        <TasteLine tasteMode={tasteMode} tasteStyles={tasteStyles} />
 
         <>
-            <details
-              className="panel mb-7 overflow-hidden"
-              {...(latestRec ? {} : { open: true })}
-            >
-              <summary className="flex cursor-pointer select-none items-center justify-between px-5 py-4 text-sm font-semibold">
-                <span>Adjust recommendations</span>
-                <span className="text-faint">▾</span>
-              </summary>
-              <form
-                action={updateRecommendations}
-                className="space-y-6 border-t border-border p-5"
-              >
-                {(gameCount ?? 0) === 0 && (
-                  <p className="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
-                    No Steam library linked — pick a few games you like below to get
-                    recommendations (or link Steam under your account).
-                  </p>
-                )}
-
-                {/* Seed games — optional taste source for this run */}
-                <SeedPicker />
-
-                {/* How you play — the only hard filter */}
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm font-semibold">How you want to play</p>
-                    <p className="text-xs text-faint">
-                      The one hard filter — results are limited to games that fit.
-                    </p>
-                  </div>
-                  <ChipGroup label="Mode">
-                    {MODE_OPTIONS.map((m) => (
-                      <Chip
-                        key={m.value || "any"}
-                        type="radio"
-                        name="mode"
-                        value={m.value}
-                        label={m.label}
-                        defaultChecked={(appliedFilters.mode ?? "") === m.value}
-                      />
-                    ))}
-                  </ChipGroup>
-                </div>
-
-                {/* Lean toward — soft preferences */}
-                <div className="space-y-4 border-t border-border pt-5">
-                  <div>
-                    <p className="text-sm font-semibold">Lean toward</p>
-                    <p className="text-xs text-faint">
-                      Soft preferences — nudge ranking (raise the &quot;Preference&quot;
-                      score), they don&apos;t exclude anything.
-                    </p>
-                  </div>
-                  <GenrePicker initialSelected={savedGenres} />
-                  <ChipGroup label="Vibe & theme">
-                    <Chip
-                      type="radio"
-                      name="vibe"
-                      value=""
-                      label="Any"
-                      defaultChecked={savedVibe === ""}
-                    />
-                    {VIBE_OPTIONS.map((v) => (
-                      <Chip
-                        key={v}
-                        type="radio"
-                        name="vibe"
-                        value={v}
-                        label={v}
-                        defaultChecked={savedVibe === v}
-                      />
-                    ))}
-                  </ChipGroup>
-                  <ChipGroup label="Difficulty">
-                    <Chip
-                      type="radio"
-                      name="difficulty"
-                      value=""
-                      label="Any"
-                      defaultChecked={savedDifficulty === ""}
-                    />
-                    {DIFFICULTY_OPTIONS.map((d) => (
-                      <Chip
-                        key={d.value}
-                        type="radio"
-                        name="difficulty"
-                        value={d.value}
-                        label={d.label}
-                        defaultChecked={savedDifficulty === d.value}
-                      />
-                    ))}
-                  </ChipGroup>
-                  {/* "Game length" control is PARKED: SteamSpy's median playtime
-                      is dead (all zeros), so it has no data source yet. The
-                      column/engine/action plumbing stays; re-add this ChipGroup
-                      once a real source (HowLongToBeat / IGDB) feeds
-                      games.median_playtime. */}
-                </div>
-
-                {/* Recommendation style — friendly presets instead of raw weights */}
-                <div className="space-y-3 border-t border-border pt-5">
-                  <div>
-                    <p className="text-sm font-semibold">Recommendation style</p>
-                    <p className="text-xs text-faint">
-                      {WEIGHT_PRESETS.find((p) => p.value === savedPreset)?.description ??
-                        "Choose how the ranking is balanced."}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {WEIGHT_PRESETS.map((p) => (
-                      <label key={p.value} className="cursor-pointer" title={p.description}>
-                        <input
-                          type="radio"
-                          name="preset"
-                          value={p.value}
-                          defaultChecked={savedPreset === p.value}
-                          className="pn-check sr-only"
-                        />
-                        <span className="chip">{p.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <SubmitButton className="btn btn-primary" pendingText="Updating…">
-                  Update recommendations
-                </SubmitButton>
-              </form>
-            </details>
+            <AdjustPanel
+              defaultOpen={!latestRec}
+              gameCount={gameCount ?? 0}
+              appliedFilters={appliedFilters}
+              savedGenres={savedGenres}
+              savedVibe={savedVibe}
+              savedDifficulty={savedDifficulty}
+              savedPreset={savedPreset}
+            />
 
             {visibleRecs.length > 0 ? (
               <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -451,198 +285,16 @@ export default async function DashboardPage({
       <MyGamesPanel games={myGames} />
 
       {/* Setup / status — secondary, below the games. */}
-      <section>
-        <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-faint">Setup</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <DashboardCard title="Steam account" hint="Link your Steam account">
-            {steam ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  {steam.avatar_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={steam.avatar_url}
-                      alt=""
-                      className="h-10 w-10 rounded-lg"
-                      width={40}
-                      height={40}
-                    />
-                  )}
-                  <div>
-                    <p className="font-semibold text-foreground">
-                      {steam.persona_name ?? steam.steam_id}
-                    </p>
-                    <p className="text-xs text-faint">
-                      {steam.profile_public ? "Public profile" : "Private profile"}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <form action={syncSteamLibrary}>
-                    <SubmitButton className="btn btn-primary btn-sm" pendingText="Syncing…">
-                      {steam.last_synced_at ? "Re-sync library" : "Sync library"}
-                    </SubmitButton>
-                  </form>
-                  <a
-                    href="/api/steam/link"
-                    className="text-xs text-faint underline hover:text-brand"
-                  >
-                    Change account
-                  </a>
-                </div>
-              </div>
-            ) : (
-              <a href="/api/steam/link" className="btn btn-primary btn-sm">
-                Link Steam account
-              </a>
-            )}
-          </DashboardCard>
-          <DashboardCard title="Your library" hint="Owned games & playtime">
-            {!steam ? (
-              "Link Steam to import."
-            ) : !steam.last_synced_at ? (
-              'Click "Sync library" to import your games.'
-            ) : (
-              <div className="space-y-3">
-                <p className="text-foreground">
-                  <span className="text-lg font-bold text-brand">{gameCount ?? 0}</span> games
-                  imported
-                </p>
-                {topGames.length > 0 && (
-                  <ul className="space-y-1.5">
-                    {topGames.map((g) => (
-                      <li key={g.appId} className="flex items-center justify-between gap-2">
-                        <span className="truncate">{g.name}</span>
-                        <span className="shrink-0 text-xs text-faint">
-                          {formatPlaytime(g.playtimeForever)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <p className="text-xs text-faint">
-                  Last synced {formatSyncedAt(steam.last_synced_at)}
-                </p>
-              </div>
-            )}
-          </DashboardCard>
-        </div>
-      </section>
+      <SetupCards
+        steam={steam as SteamAccount | null}
+        gameCount={gameCount ?? 0}
+        topGames={topGames}
+      />
 
       {/* Danger zone — account deletion (collapsed by default). */}
-      <section className="mt-10">
-        <details className="rounded-xl border border-destructive/40 bg-destructive/5">
-          <summary className="cursor-pointer select-none px-5 py-3.5 text-sm font-semibold text-destructive">
-            Danger zone
-          </summary>
-          <div className="space-y-4 border-t border-destructive/30 p-5">
-            <div>
-              <p className="text-sm font-medium">Delete account</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Permanently deletes your account, your synced library, preferences, and
-                recommendations. This also unlinks your Steam account so it can be linked to a
-                new account. This can&apos;t be undone.
-              </p>
-            </div>
-            <form action={deleteAccount} className="space-y-3">
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="confirm" className="h-4 w-4 accent-[var(--brand)]" />
-                I understand this is permanent.
-              </label>
-              <button
-                type="submit"
-                className="rounded-lg border border-destructive/60 bg-destructive/10 px-4 py-2 text-sm font-semibold text-destructive transition hover:bg-destructive/20"
-              >
-                Delete my account
-              </button>
-            </form>
-          </div>
-        </details>
-      </section>
+      <DangerZone />
       </div>
     </main>
   );
 }
 
-// Mode is single-select; "" = Any (parseFilters treats it as no constraint).
-// "How do you want to play?" — the only hard filter. "" = Any (no constraint).
-const MODE_OPTIONS: { value: string; label: string }[] = [
-  { value: "", label: "Any" },
-  { value: "single-player", label: "Solo" },
-  { value: "multiplayer", label: "Multiplayer" },
-  { value: "co-op", label: "Co-op (play with friends)" },
-];
-
-/** A label-wrapped, visually-hidden input styled as a toggle pill (pure CSS). */
-function Chip({
-  name,
-  value,
-  label,
-  type = "checkbox",
-  defaultChecked,
-}: {
-  name: string;
-  value: string;
-  label: string;
-  type?: "checkbox" | "radio";
-  defaultChecked?: boolean;
-}) {
-  return (
-    <label className="cursor-pointer">
-      <input
-        type={type}
-        name={name}
-        value={value}
-        defaultChecked={defaultChecked}
-        className="pn-check sr-only"
-      />
-      <span className="chip">{label}</span>
-    </label>
-  );
-}
-
-function ChipGroup({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-faint">
-        {label}
-      </span>
-      <div className="flex flex-wrap gap-2">{children}</div>
-    </div>
-  );
-}
-
-
-function formatPlaytime(minutes: number): string {
-  if (minutes <= 0) return "unplayed";
-  const hours = minutes / 60;
-  return hours < 1 ? `${minutes} min` : `${hours.toFixed(1)} h`;
-}
-
-function formatSyncedAt(iso: string): string {
-  return new Date(iso).toLocaleString();
-}
-
-/** Join detected taste styles into a readable phrase: "A", "A and B", "A, B and C". */
-function joinStyles(styles: string[]): string {
-  if (styles.length <= 1) return styles[0] ?? "";
-  return `${styles.slice(0, -1).join(", ")} and ${styles[styles.length - 1]}`;
-}
-
-function DashboardCard({
-  title,
-  hint,
-  children,
-}: {
-  title: string;
-  hint: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="panel p-5">
-      <h2 className="font-semibold">{title}</h2>
-      <p className="mt-1 text-xs text-faint">{hint}</p>
-      <div className="mt-4 text-sm text-muted-foreground">{children}</div>
-    </div>
-  );
-}
