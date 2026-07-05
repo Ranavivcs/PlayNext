@@ -2,22 +2,33 @@
 // The Supabase client is INJECTED so the same code runs under a service-role
 // script (bypasses RLS) and a user-scoped server action (catalog is public-read
 // either way). PostgREST caps a plain select at 1000 rows, so every table is
-// paged with .range() — game_tags alone is ~6k rows.
+// paged with .range() — and the pages are fetched concurrently, because
+// game_tags alone is ~49k rows (~50 pages) and sequential paging was the
+// dominant latency of a recommendation run.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { GameFeatures } from "../reco/types.ts";
 import type { CatalogEntry } from "./types.ts";
 
 const PAGE = 1000;
+// PostgREST caps a select at 1000 rows, and game_tags alone is ~50 pages, so
+// fetching pages one-after-another dominated the load. Fetch a table's pages
+// CONCURRENTLY (bounded, to not overwhelm the connection pool) instead.
+const PAGE_CONCURRENCY = 8;
 
 // The catalog is a SHARED, public, rarely-changing dataset (changes only when
 // enrichment runs), and loading it is the dominant cost of a recommendation run
-// (~thousands of rows over the network). Cache it in-process with a short TTL so
-// repeat runs on a warm server skip the fetch; enrichment shows up after the TTL.
-const CATALOG_TTL_MS = 5 * 60 * 1000;
+// (~tens of thousands of rows over the network). Cache it in-process so repeat
+// runs on a warm server skip the fetch; new enrichment shows up after the TTL.
+const CATALOG_TTL_MS = 30 * 60 * 1000;
 let catalogCache: { at: number; data: CatalogEntry[] } | null = null;
 
-/** Page through a table/select, returning every row. */
+/**
+ * Page through a table/select, returning every row. Pages are fetched with
+ * bounded concurrency. A deterministic ORDER BY (over the selected columns, a
+ * stable key) makes the offset-based `.range()` pages consistent even when
+ * requested in parallel.
+ */
 async function loadAll<T>(
   client: SupabaseClient,
   table: string,
@@ -28,15 +39,32 @@ async function loadAll<T>(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   refine?: (q: any) => any,
 ): Promise<T[]> {
-  const out: T[] = [];
-  for (let from = 0; ; from += PAGE) {
-    let q = client.from(table).select(columns).range(from, from + PAGE - 1);
+  const orderCols = columns.split(",").map((c) => c.trim());
+
+  // How many pages? A filtered exact count (head → no rows transferred).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let countQ: any = client.from(table).select(columns, { count: "exact", head: true });
+  if (refine) countQ = refine(countQ);
+  const { count, error: countErr } = await countQ;
+  if (countErr) throw new Error(`${table} count: ${countErr.message}`);
+  const pages = Math.ceil((count ?? 0) / PAGE);
+  if (pages === 0) return [];
+
+  const fetchPage = async (p: number): Promise<T[]> => {
+    let q = client.from(table).select(columns).range(p * PAGE, p * PAGE + PAGE - 1);
+    for (const col of orderCols) q = q.order(col, { ascending: true });
     if (refine) q = refine(q);
     const { data, error } = await q;
     if (error) throw new Error(`${table} load: ${error.message}`);
-    const rows = (data ?? []) as T[];
-    out.push(...rows);
-    if (rows.length < PAGE) break;
+    return (data ?? []) as T[];
+  };
+
+  const out: T[] = [];
+  for (let start = 0; start < pages; start += PAGE_CONCURRENCY) {
+    const batch = Array.from({ length: Math.min(PAGE_CONCURRENCY, pages - start) }, (_, k) =>
+      fetchPage(start + k),
+    );
+    for (const rows of await Promise.all(batch)) out.push(...rows);
   }
   return out;
 }
