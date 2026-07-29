@@ -185,21 +185,25 @@ We evaluate on two populations, for two different reasons:
 
 ## 5. Results
 
-### 5.1 Headline: content beats popularity ~85× (synthetic, 168 users, 28 themes)
+### 5.1 Headline: content beats popularity by ~two orders of magnitude (synthetic, 168 users, 28 themes)
 
 ```
 Config                     NDCG@10  Recall@10    MRR    MAP
-Random (floor)               0.001      0.003  0.008  0.004
-Popularity-only              0.002      0.004  0.005  0.001
-Recency-only                 0.001      0.001  0.009  0.003
-Content-only [single]        0.172      0.238  0.234  0.132   ← best
-Content+Graph [single]       0.135      0.173  0.213  0.107
-Content-only [clustered]     0.160      0.220  0.224  0.124
-Content+Graph [clustered]    0.134      0.171  0.209  0.105
-Balanced [clustered]         0.134      0.167  0.218  0.110
+Random (floor)               0.001      0.001  0.008  0.004
+Popularity-only              0.002      0.003  0.005  0.001
+Recency-only                 0.001      0.003  0.005  0.002
+Content-only [single]        0.142      0.199  0.212  0.118   ← best
+Content+Graph [single]       0.138      0.180  0.227  0.108
+Content-only [clustered]     0.138      0.193  0.208  0.113
+Content+Graph [clustered]    0.133      0.173  0.222  0.105
+Balanced [clustered]         0.124      0.173  0.194  0.099
 ```
 
-The content-based engine scores **NDCG@10 0.172 vs popularity 0.002** — roughly **85× better**.
+The content-based engine scores **NDCG@10 0.142 vs popularity 0.002** — where popularity is
+statistically **indistinguishable from random** (0.001). Content is better by nearly two orders of
+magnitude. (We quote the raw 0.142 vs 0.002 rather than a single "N×" figure: dividing by a
+near-zero, rounding-sensitive baseline makes the exact multiplier unstable — the robust,
+unattackable claim is *popularity ≈ random*.)
 Popularity-only and recency-only are statistically indistinguishable from random for *personalized*
 recommendation. This is the project's central claim, demonstrated quantitatively on a de-biased,
 multi-user evaluation.
@@ -247,19 +251,19 @@ rather than us hard-coding one answer for everyone.
 `scripts/train-ltr.ts` extracts the raw component scores per candidate (one engine pass per user),
 splits users 70/30, learns weights on train, and evaluates on unseen test users.
 
-On a **coherent** population the learner converged to:
+On a mixed coherent+diverse population (220 users, both single- and clustered-content features)
+the learner converged to:
 
 ```
-content 0.853 · graph 0.143 · preference 0.000 · popularity 0.004 · recency 0.000
+content_single 0.450 · content_clustered 0.438 · graph 0.111 · preference 0.000 · popularity 0.000 · recency 0.000
 ```
 
-**The machine independently discovered the thesis:** weight content highest, popularity ≈ zero — the
-opposite of a popularity-led mix. On a **mixed** coherent+diverse population (with both single- and
-clustered-content features) it learned a sensible blend
-(`content_single 0.41 · content_clustered 0.35 · graph 0.16 · recency 0.08 · popularity 0.00`).
+**The machine independently discovered the thesis:** ~0.89 of the weight on content, graph a modest
+0.11, and **popularity, preference and recency all driven to exactly 0.000** — the opposite of a
+popularity-led mix, learned from data rather than by hand.
 
 Honest negative result: LTR **did not beat the simple content-only baseline** on these populations
-(e.g. mixed test NDCG: Learned 0.121 vs Content-only 0.134). Content similarity is simply a very
+(held-out test NDCG@10: Learned 0.124 vs Content-single-only 0.127). Content similarity is simply a very
 strong, robust signal, and where a recoverable signal exists, content already captures it. LTR's
 value is (a) *confirming* the weighting from data rather than by hand, and (b) a foundation for
 *per-user adaptive* weighting — its real payoff needs a genuinely heterogeneous population where no
@@ -303,8 +307,8 @@ every other term — never a chat.
   matching and a content-vs-graph weight profile per user from their library diversity. The remaining
   step is *learning* those profiles from real feedback at scale rather than from the evaluation.
 - **Collaborative filtering** stays a stretch (needs many users).
-- **AI chat / RAG — deliberately out of scope** (§6): it would undercut the thesis and is a defense
-  liability; the embeddings infrastructure is reserved instead for a future ranking *signal*.
+- **AI chat / RAG — deliberately out of scope** (§6): it would make the LLM the face of the app and
+  undercut the thesis; the embeddings infrastructure is reserved instead for a future ranking *signal*.
 
 ---
 

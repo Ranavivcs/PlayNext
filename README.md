@@ -12,7 +12,8 @@ A separate AI layer only *explains* the ranked results — a per-game "why this
 matches you" blurb generated **after** ranking; **it never ranks.**
 
 The engine is **evaluated, not just asserted**: on a de-biased synthetic-user
-benchmark it beats a popularity baseline by **~85× on NDCG@10**, and a
+benchmark it scores **NDCG@10 ≈ 0.14 vs a popularity baseline ≈ 0.002 — popularity is
+statistically no better than random**, and a
 learning-to-rank pass independently recovers content-dominant, popularity-≈0
 weights. Full methodology, results (including honest negative results), and the
 mapping of each classic algorithm to the code are in
@@ -48,7 +49,6 @@ library's defining themes ≈100% of the time on a synthetic benchmark; see
 | 3 | Recommendation engine + metadata enrichment + games-first dashboard (hard filters, soft preferences, seed-based "pick games" path) | ✅ Done |
 | 4 | AI explanations — per-game "why this match?" (Claude Haiku, grounded, explains-never-ranks) | ✅ Done |
 | 5 | Semantic RAG chat | ❌ Decided against — would undermine the algorithm thesis (AI explains, never ranks) |
-| 6 | Defend the project — 2-hour live defense; see [docs/defense-prep.md](docs/defense-prep.md) | ⏳ Prep |
 | — | Collaborative filtering · embeddings as an engine signal | ⏳ Stretch |
 
 Shared catalog: **~2,500 enriched games** (SteamSpy top-owned + Steam `appdetails` —
